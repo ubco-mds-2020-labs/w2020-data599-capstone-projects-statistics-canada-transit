@@ -27,6 +27,19 @@ Place your weekly status updates in this folder before your weekly meeting.
 ### Week 2 (May 17 - May 21)
 
 ### Week 1 (May 10 - May 14)
+- Set up and filled the Github project log up until May 5 (Luka)
+- Software research and exploration. See Wiki links in Taiga.io (Yuxuan + Luka)
+- CDB and ODACF data filtering (Graham + Rain)
 
 ### Week 0 (May 3 - May 7)
-- 
+- Setting up Vancouver OSM and GTFS network on Open Trip Planner (Luka)
+- Setting up Weekly Task file (Rain)
+- Proposal and Statement of Work (All)
+- Data Collection (minus DB polygons) (All)
+  - General Transit Feed System (GTFS)
+  - Vancouver Open Street Maps (Van-OSM)
+  - Open Database of Cultural and Art Facilities (ODACF)
+  - Census Dissemination Blocks (CDB)
+- City Selected: Vancouver (All)
+- Setting up our project page on Taiga.io (All)
+- First client meeting and project overview.
