@@ -1,0 +1,170 @@
+---
+title: "Many-to-Many Point Computation Script"
+author: "Luka Vukovic"
+output:
+  html_document:
+    df_print: paged
+  pdf_document: default
+---
+
+### Loading libraries
+```{r include=FALSE}
+
+library(r5r)
+
+#if (Sys.getenv("JAVA_HOME")!="")
+#  Sys.setenv(JAVA_HOME="")
+library(rJava)
+library(sf)
+library(data.table)
+library(ggplot2)
+library(mapview); mapviewOptions(platform = 'leafgl')
+library(tidyverse)
+
+```
+
+### Setup
+
+- If the vancouver_canada.osm.pbf file needs to be converted to an .osm, one can use a binary osm converter available at: https://wiki.openstreetmap.org/wiki/Osmconvert#Binaries
+
+```{r, message=FALSE, warning=FALSE}
+# Allocate 4G RAM to Java
+options(java.parameters = "-Xmx4g")
+
+
+## 1) Build transport network, pointing to path where OSM and GTFS data are located
+r5r_core <- setup_r5(data_path = getwd(), verbose = FALSE)
+```
+
+```{r, warning=FALSE}
+## 2) Load origin/destination points
+
+origins <- fread(file.path("../../data/clean", "vancouver_db.csv"))
+origins <- origins[, c(1,3,4)]
+colnames(origins)[1] <- 'id'
+
+destinations <- fread(file.path("../../data/clean", "vancouver_facilities_2.csv"))
+destinations <- destinations[, 1:3]
+destinations$lat <-  as.numeric(destinations$lat) # char to numeric
+destinations$lon <-  as.numeric(destinations$lon) # char to numeric
+destinations <- destinations[complete.cases(destinations)] # remove NA rows
+
+
+# Peek
+head(origins)
+head(destinations)
+
+# Check
+c(nrow(origins), nrow(unique(origins[,1])))
+c(nrow(destinations), nrow(unique(destinations[,1])))
+```
+
+
+```{r}
+## 3) Set constraints
+# Non-transit : WALK, BICYCLE, CAR, BICYCLE_RENT, CAR_PARK
+# Transit: TRAM, SUBWAY, RAIL, BUS, FERRY, CABLE_CAR, GONDOLA, FUNICULAR
+mode <- c('WALK', 'TRANSIT')
+max_walk_dist <- 1000 # 1 km
+max_trip_duration <- 120 # 2 hours
+max_rides <- 4 # max transfers
+
+```
+
+
+
+### Computing
+```{r}
+## 4) compute travel time matrix
+# default walk speed = 3.6 km/h
+# default departure_datetime is sys.time()
+ttm <- travel_time_matrix(r5r_core = r5r_core,
+                          origins = origins,
+                          destinations = destinations,
+                          mode = mode,
+                          time_window = 2, # window in minutes for which r5r will calculate multiple travel time matrices departing each minute
+                          max_walk_dist = max_walk_dist,
+                          max_trip_duration = max_trip_duration,
+                          verbose = FALSE)
+
+```
+
+
+```{r}
+summary(ttm)
+```
+
+
+```{r}
+
+paste('Percent Origins considered:', round(length(unique(ttm$fromId))/nrow(origins) *100, 2), '%')
+paste('Percent Destinations considered:', round(length(unique(ttm$toId))/nrow(destinations) *100, 2), '%')
+
+```
+
+### Visualization of Street Network
+```{r}
+# extract OSM network
+street_net <- street_network_to_sf(r5r_core)
+```
+
+```{r}
+# Static View
+ggplot() +
+  geom_sf(data = street_net$edges, color='gray85') +
+  #geom_sf(data = ttm, aes(color=mode)) +
+  #facet_wrap(.~option) + 
+  theme_void()
+```
+
+```{r}
+# Interactive View
+mapview(street_net)
+```
+
+
+### Visualization of Average Travel Times
+```{r}
+# Group by FromId
+
+grouped_origins <- ttm %>% 
+  group_by(fromId) %>%
+  summarise(
+    avg_time = mean(travel_time),
+    sd_time = sd(travel_time),
+    n_destinations = length(toId)
+  )
+
+grouped_origins
+
+```
+
+```{r}
+# Convert to a score (naive)
+# 1 is perfect transit accessibility
+# 0 is no transit accessibility
+
+# Higher avg_time = Lower score (inverse)
+# Higher sd_time = Lower score (divide by sd)
+# More destinations = Higher score (multiply)
+
+# score = (1/avg_time)/sd_time*n_destinations
+
+grouped_origins$score <- (1/grouped_origins$avg_time)/grouped_origins$sd_time * grouped_origins$n_destinations
+
+origin_scores <- grouped_origins[,c(1,5)]
+
+# Normalize
+min_ <- min(origin_scores$score, na.rm=TRUE)
+max_ <- max(origin_scores$score, na.rm=TRUE)
+origin_scores$score <- (origin_scores$score-min_)/(max_-min_)
+
+origin_scores
+```
+
+```{r}
+
+```
+
+
+
