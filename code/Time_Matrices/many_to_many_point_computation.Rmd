@@ -71,8 +71,8 @@ head(destinations)
 ```
 
 ```{r}
-nrow(origins) == nrow(unique(origins[,1]))
-nrow(destinations) == nrow(unique(destinations[,1]))
+c(nrow(origins), nrow(unique(origins[,1])))
+c(nrow(destinations), nrow(unique(destinations[,1])))
 
 ```
 
@@ -89,14 +89,33 @@ ttm <- travel_time_matrix(r5r_core = r5r_core,
                           time_window = 2, # window in minutes for which r5r will calculate multiple travel time matrices departing each minute
                           max_walk_dist = max_walk_dist,
                           max_trip_duration = max_trip_duration,
-                          verbose = TRUE)
+                          verbose = FALSE)
 
 ```
+
 
 ```{r}
 summary(ttm)
 ```
 
+
+```{r}
+length(unique(ttm$fromId))
+length(unique(ttm$toId))
+
+```
+
+```{r}
+# extract OSM network
+street_net <- street_network_to_sf(r5r_core)
+
+# plot
+ggplot() +
+  geom_sf(data = street_net$edges, color='gray85') +
+  geom_sf(data = ttm, aes(color=mode)) +
+  facet_wrap(.~option) + 
+  theme_void()
+```
 
 
 
