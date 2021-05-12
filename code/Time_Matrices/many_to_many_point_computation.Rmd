@@ -1,0 +1,102 @@
+---
+title: "Many-to-Many Point Computation Script"
+author: "Luka Vukovic"
+output:
+  html_document:
+    df_print: paged
+  pdf_document: default
+---
+
+### Loading libraries
+```{r include=FALSE}
+
+# Main
+library(r5r)
+if (Sys.getenv("JAVA_HOME")!="")
+  Sys.setenv(JAVA_HOME="")
+library(rJava)
+
+# Supplementary
+library(sf)
+library(data.table)
+library(ggplot2)
+library(mapview); mapviewOptions(platform = 'leafgl')
+```
+
+### Setup
+
+- If the vancouver_canada.osm.pbf file needs to be converted to an .osm, one can use a binary osm converter available at: https://wiki.openstreetmap.org/wiki/Osmconvert#Binaries
+
+```{r message=FALSE, warning=FALSE}
+## Allocate RAM memory to Java
+options(java.parameters = "-Xmx4g")
+
+
+## 1) Build transport network, pointing to path where OSM and GTFS data are located
+# (They're in the current working directory)
+path = getwd()
+r5r_core <- setup_r5(data_path = path, verbose = FALSE)
+```
+
+``` {r}
+## 2) Load origin/destination points
+
+origins <- fread(file.path(getwd(), "vancouver_db.csv"))
+
+destinations <- fread(file.path(getwd(), "vancouver_facilities_2.csv"))
+destinations <- destinations[,2:4]
+
+destinations$lat <-  as.numeric(destinations$lat)
+destinations$lon <-  as.numeric(destinations$lon)
+
+destinations <- destinations[complete.cases(destinations)]
+
+```
+
+
+```{r}
+## 3) Set constraints
+# Non-transit : WALK, BICYCLE, CAR, BICYCLE_RENT, CAR_PARK
+# Transit: TRAM, SUBWAY, RAIL, BUS, FERRY, CABLE_CAR, GONDOLA, FUNICULAR
+mode <- c('WALK', 'TRANSIT')
+max_walk_dist <- 2000 # meters
+max_trip_duration <- 120 # minutes
+max_rides <- 3 # 3 transfers max
+
+```
+
+```{r}
+head(origins)
+head(destinations)
+```
+
+```{r}
+nrow(origins) == nrow(unique(origins[,1]))
+nrow(destinations) == nrow(unique(destinations[,1]))
+
+```
+
+
+### Computing
+```{r}
+## 4) compute travel time matrix
+# default walk speed = 3.6 km/h
+# default departure_datetime is sys.time()
+ttm <- travel_time_matrix(r5r_core = r5r_core,
+                          origins = origins,
+                          destinations = destinations,
+                          mode = mode,
+                          time_window = 2, # window in minutes for which r5r will calculate multiple travel time matrices departing each minute
+                          max_walk_dist = max_walk_dist,
+                          max_trip_duration = max_trip_duration,
+                          verbose = TRUE)
+
+```
+
+```{r}
+summary(ttm)
+```
+
+
+
+
