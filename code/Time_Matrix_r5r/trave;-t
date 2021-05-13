@@ -1,0 +1,10 @@
+library(r5r)
+library(sf)
+library(data.table)
+library(ggplot2)
+library(mapview)
+library(tidyr)
+mapviewOptions(platform = 'leafgl')
+
+options(java.parameters = "-Xmx2G")
+r5r_core <- setup_r5(data_path ="/Users/yuxuancui/Desktop/MDS/data599/r5r")

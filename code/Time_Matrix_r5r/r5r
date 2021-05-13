@@ -1,0 +1,7 @@
+library(r5r)
+library(sf)
+library(data.table)
+library(ggplot2)
+library(mapview)
+library(tidyr)
+mapviewOptions(platform = 'leafgl')
