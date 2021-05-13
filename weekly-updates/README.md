@@ -27,6 +27,10 @@ Place your weekly status updates in this folder before your weekly meeting.
 ### Week 2 (May 17 - May 21)
 
 ### Week 1 (May 10 - May 14)
+- 
+- Updated the CDB data wrangling file to output a CSV with standardized column names (Graham)
+- Discussed and planned out the high level data manipulation and score computing (All)
+- Built web scraper to collect cultural POIT review counts (Yuxuan)
 - Set up and filled the Github project log up until May 5 (Luka)
 - Software research and exploration. See Wiki links in Taiga.io (Yuxuan + Luka)
 - CDB and ODACF data filtering (Graham + Rain)
