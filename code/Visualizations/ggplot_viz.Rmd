@@ -1,18 +1,59 @@
+---
+title: "Network Viz"
+output:
+  pdf_document: default
+  html_document:
+    df_print: paged
+---
 
+### Loading libraries
+```{r include=FALSE}
+
+# Main
+library(r5r)
+#if (Sys.getenv("JAVA_HOME")!="")
+#  Sys.setenv(JAVA_HOME="")
+library(rJava)
+library(sf)
+library(data.table)
+
+# Visualization
+library(ggplot2)
+library(mapview); mapviewOptions(platform = 'leafgl')
+
+# Convenience
+library(tidyverse)
+library(glue)
+library(rlist)
+
+```
+
+
+### 1. Setup the Network Graph
+
+- If the vancouver_canada.osm.pbf file needs to be converted to an .osm, one can use a binary osm converter available at: https://wiki.openstreetmap.org/wiki/Osmconvert#Binaries
+
+```{r message=FALSE, warning=FALSE}
+## Allocate 3G RAM to Java
+options(java.parameters = "-Xmx3g")
+
+## Build transport network, pointing to path where OSM and GTFS data are located
+r5r_core <- setup_r5(data_path = getwd(), verbose = FALSE)
+```
 ### Visualization of Street Network
 ```{r}
 # extract OSM network
-#street_net <- street_network_to_sf(r5r_core)
+street_net <- street_network_to_sf(r5r_core)
 
 
 # Generate a static View
-#ggplot() +
-#  geom_sf(data = street_net$edges, color='gray85') +
-#  theme_void()
+ggplot() +
+  geom_sf(data = street_net$edges, color='gray85') +
+  theme_void()
 
 
-# Generate an interactive View
-#mapview(street_net)
+# Generate a static View
+mapview(street_net)
 ```
 
 
