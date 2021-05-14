@@ -1,0 +1,25 @@
+
+### Visualization of Street Network
+```{r}
+# extract OSM network
+#street_net <- street_network_to_sf(r5r_core)
+
+
+# Generate a static View
+#ggplot() +
+#  geom_sf(data = street_net$edges, color='gray85') +
+#  theme_void()
+
+
+# Generate an interactive View
+#mapview(street_net)
+```
+
+
+### Visualization of Average Travel Times
+
+```{r}
+
+```
+
+

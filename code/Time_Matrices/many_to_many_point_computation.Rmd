@@ -73,13 +73,11 @@ c(nrow(destinations), nrow(unique(destinations[,1])))
 ```
 
 ```{r}
-# Testing sample
-sample_origins <- origins[sample(.N, 3000)]
-sample_destinations <- destinations[sample(.N, 432)] # uses all destinations
-
-# Peek
-sample_origins
-sample_destinations
+## Testing samples
+#sample_origins <- origins[sample(.N, 3000)]
+#sample_destinations <- destinations[sample(.N, 432)] # uses all destinations
+#sample_origins
+#sample_destinations
 ```
 
 
@@ -149,33 +147,40 @@ summary(TTM)
 
 ### 5. Aggregate Travel Time Matrix without any Destination Weights
 
+- In order to avoid NA or inf values in the score computation, we need to replace all standard deviations that are zero or NA with an appropriate value.
+- A zero standard deviation can be replaced with the 1% quantile
+- An NA standard deviation is due to there only being 1 sample in the computation. Since there's only a single possible trip we'll assume the variation in operation is higher than average, so the 80% quantile in variation will be used as replacement.
+
+In the second aggregation we take the standard deviation of transit time to all points of interest from a given block. If the block can only access 1 point of interest, it's standard deviation will be NA. We can thus replace it with the 80% quantile assuming that its variation in trip time will be greater on average.
+
 ```{r}
-# Aggregate on each unique transit trip
-# This computes the average travel time to the same destination (weekly variation in trips)
-TTM_agg <- TTM %>%
-           group_by(fromId, toId) %>% 
-           summarise(
-             avg_unique_time = mean(travel_time), 
-             sd_unique_time = sd(travel_time)
-           )
 
-print('First aggregation:')
-summary(TTM_agg)
-
-
-# Fill NAs in standard deviation
-# Rare trip have a sd equal to inf or NA since there may be only 1 sample
-# We'll replace them with a reasonable guess using the 90th percentile variation
-# since their variations will likely be on the larger side
-upper90_sd <- quantile(TTM_agg$sd_unique_time, 0.9, na.rm=TRUE)
-TTM_agg <- TTM_agg %>% replace_na(list('sd_unique_time'=upper90_sd))
-
-print('First Aggregation with NAs replaced:')
-summary(TTM_agg)
+## FIRST AGGREGATION
+# aggregate on each unique transit trip computing the avg trip travel time to the same destination
+#TTM_agg <- TTM %>%
+#           group_by(fromId, toId) %>% 
+#           summarise(
+#             avg_unique_time = mean(travel_time), 
+#             sd_unique_time = sd(travel_time)
+#           )
+print('First aggregation:'); summary(TTM_agg)
 
 
-# Aggregate on each origin
-# This computes the average travel time from each origin to all destinations (variation in all trip)
+## FIX FIRST AGGREGATION
+
+# fill NAs in standard deviation with 80th percentile value
+upper80_sd <- quantile(TTM_agg$sd_unique_time, 0.8, na.rm=TRUE)
+TTM_agg <- TTM_agg %>% replace_na(list('sd_unique_time'=upper80_sd))
+
+# replace zero standard deviations to avoid infinity computations later on
+lower01_sd <- quantile(TTM_agg$sd_unique_time, 0.01, na.rm=TRUE)
+TTM_agg$sd_unique_time[(TTM_agg$sd_unique_time == 0)] <-  lower01_sd
+
+print('First Aggregation with sd NAs+Zeros replaced:'); summary(TTM_agg)
+
+
+## SECOND AGGREGATION
+# aggregates on each origin computing avg travel time to all poi from each origin
 TTM_final <- TTM_agg %>%
                group_by(fromId) %>% 
                summarise(
@@ -185,15 +190,11 @@ TTM_final <- TTM_agg %>%
                  n_accessible_poi = n()
                )
 
-upper90_sd <- quantile(TTM_final$sd_time_to_allpoi, 0.9, na.rm=TRUE)
-TTM_final <- TTM_final %>% replace_na(list('sd_time_to_allpoi'=upper90_sd))
+# Fill NAs in standard deviation with 90th percentile value
+upper80_sd <- quantile(TTM_final$sd_time_to_allpoi, 0.8, na.rm=TRUE)
+TTM_final <- TTM_final %>% replace_na(list('sd_time_to_allpoi'=upper80_sd))
 
-print('Second aggregation:')
-summary(TTM_final)
-
-
-# Export
-write.csv(TTM_final, "../../data/clean/ttm_data.csv", row.names = FALSE)
+print('Second aggregation:'); summary(TTM_final)
 
 ```
 
@@ -201,6 +202,10 @@ write.csv(TTM_final, "../../data/clean/ttm_data.csv", row.names = FALSE)
 # Check how many origins/destinations had trips
 paste('Percent Origins considered:', round(length(unique(TTM_agg$fromId))/nrow(origins) *100, 2), '%')
 paste('Percent Destinations considered:', round(length(unique(TTM_agg$toId))/nrow(destinations) *100, 2), '%')
+
+# Export for convenience
+write.csv(TTM_final, "../../data/clean/ttm_data.csv", row.names = FALSE)
+
 ```
 
 
@@ -210,14 +215,18 @@ paste('Percent Destinations considered:', round(length(unique(TTM_agg$toId))/nro
 ```{r}
 # Import
 
-
 # Initialize destination popularity dataframe
-POI_popularity <- data.frame('id'= sample_destinations$id, stringsAsFactors = TRUE)
+POI_popularity <- data.frame('id'= destinations$id, stringsAsFactors = TRUE)
 
 # Generate POI popularity weights
-POI_popularity$wt <- runif(nrow(sample_destinations))
+# using rbeta density 
+# assumes cultural facilities tend to be popular or unpopular, not inbetween
+plot(density(rbeta(nrow(destinations), shape1=0.65, shape2=0.65)))
+POI_popularity$wt <- rbeta(nrow(destinations), shape1=0.8, shape2=0.8)
 
 POI_popularity
+
+
 ```
 
 
@@ -225,30 +234,47 @@ POI_popularity
 ### 7. Reperform the Second Aggregation to Include the Destination Weights
 
 ```{r}
-# Add popularity weight column using levels
+# Join dfs to have a popularity weight column
 TTM_agg_w_wts <- left_join(TTM_agg, POI_popularity, by = c('toId'='id'))
 
-# Fill NAs (rare trip have no sd) with 90th percentile variation
-upper90_sd <- quantile(TTM_agg_w_wts$sd_unique_time, 0.9, na.rm=TRUE)
-TTM_agg_w_wts <- TTM_agg_w_wts %>% replace_na(list('sd_unique_time'=upper90_sd))
 
 # Aggregate on each origin
 # This computes the average travel time from each origin to all destinations (variation in all trip)
 TTM_final_wts <- TTM_agg_w_wts %>%
-               group_by(fromId) %>% 
-               summarise(
-                 avg_time_to_allpoi = mean(avg_unique_time), 
-                 sd_time_to_allpoi = sd(avg_unique_time),
-                 avg_sd_time_to_uniquepoi = mean(sd_unique_time),
-                 n_accessible_poi = sum(wt)
-               )
+                 group_by(fromId) %>% 
+                 summarise(
+                   avg_time_to_allpoi = mean(avg_unique_time), 
+                   sd_time_to_allpoi = sd(avg_unique_time),
+                   avg_sd_time_to_uniquepoi = mean(sd_unique_time),
+                   n_accessible_poi = sum(wt)
+                 )
 
-# Export
-write.csv(TTM_final_wts, "../../data/clean/ttm_data_weighted.csv", row.names = FALSE)
+# Fill NAs (rare trip have no sd) with 80th percentile variation
+upper80_sd <- quantile(TTM_final_wts$sd_time_to_allpoi, 0.8, na.rm=TRUE)
+TTM_final_wts <- TTM_final_wts %>% replace_na(list('sd_time_to_allpoi'=upper80_sd))
 
 summary(TTM_final_wts)
 
 ```
+
+```{r}
+## Normalize data
+
+# [0-1] Normalization Function
+normalize <- function(vector) {
+  minimum <- min(vector, na.rm=TRUE)
+  maximum <- max(vector, na.rm=TRUE)
+  range <- maximum-minimum
+  
+  normed <- (vector-minimum*0.99)/range # use 0.99 to avoid zero values
+  return(normed)
+}
+
+# Normalize data
+TTM_final_normalized <- data.frame(cbind('fromId' = TTM_final$fromId, apply(TTM_final[2:5], 2, normalize)))
+TTM_final_wts_normalized <- data.frame(cbind('fromId' = TTM_final_wts$fromId, apply(TTM_final_wts[2:5], 2, normalize)))
+```
+
 
 # Experimental Score Conversion
 
@@ -261,79 +287,50 @@ summary(TTM_final_wts)
 # More accessible destinations = Higher score (multiply)
 # Therefore: score = n_destinations /(avg_time*sd_time)
 
+Naive_score_fxn <- function(n_accessible, mean_tt, sd_tt) {
+  score <- n_accessible / (mean_tt*sd_tt)
+  #score <- normalize(score) # incorporate normalization
+  return(score)
+}
 
-# Without Weights
-TTM_final$score <- TTM_final$n_accessible_poi / (TTM_final$avg_time_to_allpoi*TTM_final$avg_sd_time_to_uniquepoi)
-TTM_final <- TTM_final[order(TTM_final$score, decreasing=TRUE,na.last=FALSE), ]
-# Peek at undefined (NA/inf) values
-TTM_final
+# Score without Weights
+TTM_final_normalized$score <- Naive_score_fxn(TTM_final$n_accessible_poi,
+                                              TTM_final$avg_time_to_allpoi,
+                                              TTM_final$avg_sd_time_to_uniquepoi)
+# Score with Weights
+TTM_final_wts_normalized$score <- Naive_score_fxn(TTM_final_wts$n_accessible_poi,
+                                                  TTM_final_wts$avg_time_to_allpoi,
+                                                  TTM_final_wts$avg_sd_time_to_uniquepoi)
 
+# Sort scores
+TTM_final_normalized <- TTM_final_normalized[order(TTM_final_normalized$score, decreasing=TRUE,na.last=FALSE), ]
+TTM_final_wts_normalized <- TTM_final_wts_normalized[order(TTM_final_wts_normalized$score, decreasing=TRUE,na.last=FALSE), ]
 
-# Without Weights
-TTM_final_wts$score <- TTM_final_wts$n_accessible_poi / (TTM_final_wts$avg_time_to_allpoi*TTM_final_wts$avg_sd_time_to_uniquepoi)
-TTM_final_wts <- TTM_final_wts[order(TTM_final_wts$score, decreasing=TRUE,na.last=FALSE), ]
-# Peek at undefined (NA/inf) values
-TTM_final_wts
+# Peek
+TTM_final_normalized
+TTM_final_wts_normalized
 
 ```
 
 
 
 ```{r}
-# Cut off infinite values
-TTM_final <- TTM_final[23:nrow(TTM_final),] # must manually input the cut off index +1
-TTM_final_wts <- TTM_final_wts[23:nrow(TTM_final_wts),] # must manually input the cut off index +1
+# fix weird value of 10
+TTM_final_normalized$score[1] <- 4.76
 
-# Normalize
-min_ <- min(TTM_final$score, na.rm=TRUE)
-max_ <- max(TTM_final$score, na.rm=TRUE)
-TTM_final$norm_score <- (TTM_final$score-min_)/(max_-min_)
-
-min_ <- min(TTM_final_wts$score, na.rm=TRUE)
-max_ <- max(TTM_final_wts$score, na.rm=TRUE)
-TTM_final_wts$norm_score <- (TTM_final_wts$score-min_)/(max_-min_)
+# Normalize scores
+TTM_final_normalized$score <- normalize(TTM_final_normalized$score)
+TTM_final_wts_normalized$score <- normalize(TTM_final_wts_normalized$score)
 
 # Distribution
-hist(TTM_final$norm_score)
-hist(TTM_final_wts$norm_score)
+plot(density(TTM_final_normalized$score))
+plot(density(TTM_final_wts_normalized$score))
 
-
-
-```
-
-```{r}
 # Export
-ttm_unweighted_scores <- TTM_final[,c(1,6,7)]
-ttm_weighted_scores <- TTM_final_wts[,c(1,6,7)]
-write.csv(TTM_final, "../../data/clean/ttm_unweighted_scores.csv", row.names = FALSE)
-write.csv(TTM_final_wts, "../../data/clean/ttm_weighted_scores.csv", row.names = FALSE)
-
+write.csv(TTM_final_normalized, "../../data/clean/ttm_unweighted_scores.csv", row.names = FALSE)
+write.csv(TTM_final_wts_normalized, "../../data/clean/ttm_weighted_scores.csv", row.names = FALSE)
 ```
 
-
-
-### 9. Visualization of Street Network
-```{r}
-# extract OSM network
-#street_net <- street_network_to_sf(r5r_core)
-
-
-# Generate a static View
-#ggplot() +
-#  geom_sf(data = street_net$edges, color='gray85') +
-#  theme_void()
-
-
-# Generate an interactive View
-#mapview(street_net)
-```
-
-
-### 10. Visualization of Average Travel Times
-
-```{r}
-
-```
 
 
 
