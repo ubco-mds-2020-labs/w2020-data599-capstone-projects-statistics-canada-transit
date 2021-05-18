@@ -1,0 +1,22 @@
+---
+title: "Amenity score"
+author: "Yuxuan"
+date: "18/05/2021"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+# import dataset
+
+```{R}
+library(readr)
+library(dplyr)
+```
+
+
+```{R}
+google_reviews_poi <-read_csv("~/Desktop/MDS/data599/w2020-data599-capstone-projects-statistics-canada-transit/data/clean/google_reviews_poi.csv")
+```
