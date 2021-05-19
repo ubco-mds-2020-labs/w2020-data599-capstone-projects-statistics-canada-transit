@@ -1,87 +1,168 @@
 ---
 title: "Score Computation Notebook"
 output:
-  pdf_document: default
+  html_document:
+    df_print: paged
   html_notebook: default
+  pdf_document: default
 ---
 
-## Purpose
+# Purpose
 
 The purpose of this notebook is to use the raw travel time data to experiment with different methods of aggregation and score modeling.
 
+Scoring models incorporated:
+
+| Name | Function | Notes | Assumptions |
+|---|---|---|---|
+|Unweighted Naive | number of accessible points / (mean transit time * mean standard deviation in transit time)  | Mean transit time to all accessible destinations  | Assumes that accessibility is defined by access to all amenities |
+|Weighted Naive | popularity weighted accessible points / (mean transit time * mean standard deviation in transit time)  | Mean transit time to all accessible destinations  | Assumes that accessibility is defined by access to all amenities and that amenity popularity defines significance of an accessible amenity |
+| Unweighted Sum | 1 / (nearest amenity transit time + standard deviation in nearest transit time)  | Only considers the nearest 1 to 3 amenities of a certain category. Sum is used to prevent skewing of data (difference(1/(0.01\*0.01) and 1/(6\*6)) >>> difference(1/(0.01+0.01) and 1/(6+6))) | Assumes accessibility only defined by access to the nearest amenity type  |
+
+
+***Import libraries***
 ```{r message=FALSE, warning=FALSE}
 library(tidyverse)
+
+# For pretty knitting
+library(lemon)
+knit_print.data.frame <- lemon_print
+knit_print.tbl <- lemon_print
+knit_print.summary <- lemon_print
+
+
 ```
 
-
-```{r}
-## Import raw TTM
+***Import data***
+```{r kable.opts=list(caption='Summary Table')}
+## Import raw Travel Time Matrix (ttm)
 
 ttm <- read.csv('../data/clean/ttm.csv')
 
 origins <- 15197 # known origins
 poi <- 432       # known destinations
 
+paste('Percent Origins considered:', round(length(unique(ttm$fromId))/origins*100, 2), '%')
+paste('Percent Destinations considered:', round(length(unique(ttm$toId))/poi*100, 2), '%')
+
+
 # convert Ids from double to factor
 ttm$fromId <- as.factor(ttm$fromId)
 ttm$toId <- as.factor(ttm$toId)
 
-summary(ttm); head(ttm)
+summary(ttm[,3:4])
+sample_n(ttm, 5)
 
-paste('Percent Origins considered:', round(length(unique(ttm$fromId))/origins*100, 2), '%')
-paste('Percent Destinations considered:', round(length(unique(ttm$toId))/poi*100, 2), '%')
+par(mfrow = c(2, 2))
+
+plot(density(ttm[,3]), main = 'Travel Time Distribution')
+plot(density(ttm[,4]), main = 'Standard Deviation in Travel Time Distribution')
+
 ```
 
-### Base Functions
+***Mini wrangling to remove extreme values***
+```{r}
+par(mfrow = c(2, 2))
+
+# All travel time less than 5 minutes will be set to 5 minutes
+ttm$avg_unique_time <- pmax(ttm$avg_unique_time, 5)
+plot(density(ttm$avg_unique_time), main = 'Travel Time Distribution')
+
+# Option 1: correct edges but not the skew
+# All uncertainties greater than 12 minutes will be set to 12
+# All uncertainties less than 1 minute will be set to 1 minute
+test_sd <- pmax(pmin(ttm$sd_unique_time, 12), 1)
+plot(density(test_sd), main = 'Clipped Standard Deviation Density')
+
+# Option 2: correct the skew in addition to edges
+ttm$sd_unique_time <- log(ttm$sd_unique_time) - min(log(ttm$sd_unique_time)) + 1
+plot(density(ttm$sd_unique_time), main = 'Log+1 Standard Deviation Density')
+```
+
+
+## Base Functions
 
 ```{r}
-# Function for normalizing numeric columns
-normalize <- function(df) {
-  
+##############################
+## NORMALIZATION FUNCTIONS
+##############################
+
+# normalize all numeric columns in a dataframe to a custom range [x,y]
+normalize_df <- function(df, x = 0.01, y = 0.99, log = FALSE) {
   num_cols <- which(sapply(df, is.numeric)) # numeric columns
+  if (log == TRUE) { df[num_cols] <- log(df[num_cols]) }
   
   min_vec <- sapply(df[num_cols], min)
   max_vec <- sapply(df[num_cols], max)
-  range_vec <- (max_vec - min_vec)/0.99
+  range_vec <- (max_vec - min_vec)
   
-  norm <- function(vec, min, range) (vec - min*0.99)/range # use 0.99 to avoid zero values
+  cust_norm <- function(vec, min, range, x, y) {
+    norm1 <- (vec - min)/range
+    norm2 <- norm1*(y - x) + x
+    norm2
+  }
   
   if (length(min_vec) > 1) {
-    normed <- mapply(norm, df[num_cols], min = min_vec, range = range_vec)
+    # if there are multiple numeric columns
+    normed <- mapply(cust_norm, df[num_cols], min = min_vec, range = range_vec, x = x, y = y)
     df[num_cols] <- normed
   } else {
-    normed <- sapply(df[num_cols], norm, min = min_vec, range = range_vec)
+    # if there is 1 numeric column
+    normed <- sapply(df[num_cols], norm, min = min_vec, range = range_vec, x = x, y = y)
     df[num_cols] <- as.numeric(normed)
   }
   df
 }
 
+# normalize vector to a custom range [x,y]
+normalize_vec <- function(vec, x, y, log = FALSE) {
+  if (log == TRUE) { vec <- log(vec) }
+  norm_v <- (vec - min(vec))/(max(vec) - min(vec))
+  custom_norm_v <- norm_v*(y - x) + x
+  custom_norm_v
+}
 
-# Naive score function
-# 1 is perfect transit accessibility /// 0 is no transit accessibility
-# Higher avg_time = Lower score (inverse)
-# Higher sd_time = Lower score (inverse)
-# More accessible destinations = Higher score (multiply)
-naive_score <- function(fromIds, mean_time, mean_sd_time, n_accessible) {
-  score <- n_accessible / (mean_time*mean_sd_time)
-  df <- data.frame('fromId' = as.factor(fromIds), 'score' =  score)
-  df <- df[order(df$score, decreasing=TRUE, na.last=FALSE), ]
-  df <- normalize(df)
+
+##############################
+## SCORING FUNCTIONS
+##############################
+
+# naive score function : accessible_points / (mean * std)
+naive_score <- function(fromIds, mean_time, mean_sd_time, n_accessible, x=0.001, y=0.999, log = FALSE) {
+  
+  # normalize the score function with custom parameters
+  norm_score <- normalize_vec(n_accessible / (mean_time*mean_sd_time), x = x, y = y, log = log)
+
+  df <- data.frame('fromId' = as.factor(fromIds), 'score' =  norm_score)
+  #df <- df[order(df$norm_score, decreasing=TRUE, na.last=FALSE), ] # order doesn't matter
+  df
+}
+
+# naive score function2 : 1 / (mean + std)
+naive_score2 <- function(fromIds, mean_time, mean_sd_time, x=0.001, y=0.999, log = FALSE) {
+  # normalize the score function with custom parameters
+  norm_score <- normalize_vec( 1/(mean_time*mean_sd_time), x = x, y = y, log = log)
+  df <- data.frame('fromId' = as.factor(fromIds), 'score' =  norm_score)
+  df
+}
+
+# simplest score function using only mean time
+simple_score <- function(fromIds, mean_time,x=0.001, y=0.999, log = FALSE) {
+  norm_score <- normalize_vec(1/mean_time, x, y, log) # custom score normalization
+  df <- data.frame('fromId' = as.factor(fromIds), 'score' =  norm_score)
   df
 }
 
 ```
 
+---
 
+## Unweighted Accessibility to All Destinations within Contraints
 
-### First Scoring
+#### Aggregate on from destinations and compute unweighted average to all accessible destinations.
 
-**Unweighted accessibility score from a given origin (dissemination block) to all points of interest.**
-
-
-```{r}
-# aggregates on each origin computing avg travel time
-# to all destinations from each origin
+```{r kable.opts=list(caption='Summary Table')}
+# avg travel time to all accessible destinations
 ttm_all_dest <- ttm %>%
                 group_by(fromId) %>% 
                 summarise(
@@ -91,39 +172,48 @@ ttm_all_dest <- ttm %>%
                   n_accessible_poi = n()
                 )
 
-# Fill NAs in standard deviation with 80th percentile value
-#upper80_sd <- quantile(ttm_all_dest$sd_time_to_allpoi, 0.8, na.rm=TRUE)
-# ttm_all_dest <- ttm_all_dest %>% replace_na(list('sd_time_to_allpoi'=upper80_sd))
+summary(ttm_all_dest)[,2:4]
+sample_n(ttm_all_dest, 5)
 
-head(ttm_all_dest)
-
-## Get scores
-first_scoring <- naive_score(ttm_all_dest$fromId,
-                    ttm_all_dest$avg_time_to_allpoi,
-                    ttm_all_dest$avg_sd_time_to_uniquepoi, 
-                    ttm_all_dest$n_accessible_poi)
-plot(density(first_scoring$score))
 ```
 
-** Notice if we normalize before score computation we get one extremely outlying score**
+#### Visualizing the distribution of aggregated data and aggregated log(data)
 
 ```{r}
-norm_ttm_all_dest <- normalize(ttm_all_dest)
-summary(norm_ttm_all_dest)
+# visualizing distribution of data
+par(mfrow = c(2, 3))
 
-## Get scores
-test_scoring <- naive_score(norm_ttm_all_dest$fromId,
-                             norm_ttm_all_dest$avg_time_to_allpoi,
-                             norm_ttm_all_dest$avg_sd_time_to_uniquepoi, 
-                             norm_ttm_all_dest$n_accessible_poi)
-plot(density(test_scoring$score))
+plot(density(ttm_all_dest$avg_time_to_allpoi))
+plot(density(ttm_all_dest$avg_sd_time_to_uniquepoi))
+plot(density(ttm_all_dest$n_accessible_poi))
+
 ```
 
-### Second Scoring
+#### Compute and Visualizing the scores
 
-**Weighted accessibility score from a given origin (dissemination block) to all points of interest.**
+```{r message=FALSE, warning=FALSE, kable.opts=list(caption='Summary Table')}
+## Get and visualize score distributions
+# without log since it was applied in the mini wrangling
+attach(ttm_all_dest)
+first_scoring <- naive_score(fromIds = fromId,
+                             mean_time = avg_time_to_allpoi,
+                             mean_sd_time = avg_sd_time_to_uniquepoi, 
+                             n_accessible = n_accessible_poi,
+                             x = 0.01, y = 0.99, log = FALSE)
 
-Here we import the scoring weights and join them to the ttm frame.
+detach(ttm_all_dest)
+
+plot(density(first_scoring$score))
+summary(first_scoring$score)
+
+```
+
+
+---
+
+## Weighted Accessibility to All Destinations within Contraints
+
+#### Import the scoring weights and join them to the ttm frame
 
 ```{r}
 # Import
@@ -133,169 +223,252 @@ poi_ids <- unique(ttm$toId)
 POI_popularity <- data.frame('id'= poi_ids, stringsAsFactors = TRUE)
 
 # Generate POI popularity weights
-# using rbeta density 
-# assumes cultural facilities tend to be popular or unpopular, not inbetween
-plot(density(rbeta(length(poi_ids), shape1=0.65, shape2=0.65)))
+# using rbeta density which assumes cultural facilities to be more often popular or unpopular, not between
+POI_popularity$wt <- rbeta(length(poi_ids), shape1=0.65, shape2=0.65)
+par(mfrow=c(2,2))
+plot(density(POI_popularity$wt), main = 'Amenity Popularity Distribution')
 
-POI_popularity$wt <- rbeta(length(poi_ids), shape1=0.8, shape2=0.8)
-
-head(POI_popularity)
-
-
-```
-
-Reperform the Second Aggregation to Include the Destination Weights
-
-```{r}
 # Join dfs to have a popularity weight column
 ttm_weights <- left_join(ttm, POI_popularity, by = c('toId'='id'))
+```
 
+#### Re-Perform the fromId Aggregation to Include the Destination Weights
 
-# aggregates on each origin computing avg travel time
-# to all destinations from each origin
+```{r kable.opts=list(caption='Summary Table')}
+# avg travel time to all accessible destinations
 ttm_all_dest_wts <- ttm_weights %>%
                     group_by(fromId) %>% 
                     summarise(
                       avg_time_to_allpoi = mean(avg_unique_time), 
                       avg_sd_time_to_uniquepoi = mean(sd_unique_time),
-                      n_accessible_poi = sum(wt)
+                      n_accessible_poi = sum(wt) # weighted component
                     )
 
-summary(ttm_all_dest_wts)
+summary(ttm_all_dest_wts)[,2:4]
+sample_n(ttm_all_dest_wts, 5)
+```
 
-## Get scores
-second_scoring <- naive_score(ttm_all_dest_wts$fromId,
-                              ttm_all_dest_wts$avg_time_to_allpoi,
-                              ttm_all_dest_wts$avg_sd_time_to_uniquepoi, 
-                              ttm_all_dest_wts$n_accessible_poi)
+#### Visualize and compare the distribution of the n_accessible_poi
 
-plot(density(second_scoring$score))
+```{r}
+# visualizing distribution of data and log(data)
+par(mfrow = c(2, 2))
+
+plot(density(ttm_all_dest$n_accessible_poi), main = 'Unweighted Accessible Points')
+plot(density(ttm_all_dest_wts$n_accessible_poi), main = 'Weighted Accessible Points')
 
 ```
 
-### Third Scoring
+#### Compute and Visualizing the scores
 
-**Unweighted, average time of nearest two amenities by amenity (we consider amenity types separate)**
+```{r message=FALSE, warning=FALSE, kable.opts=list(caption='Summary Table')}
+## Get and visualize score distributions
+# without log since it was applied in the mini wrangling
+attach(ttm_all_dest_wts)
+second_scoring <- naive_score(fromIds = fromId,
+                              mean_time = avg_time_to_allpoi,
+                              mean_sd_time = avg_sd_time_to_uniquepoi, 
+                              n_accessible = n_accessible_poi,
+                              x = 0.01, y = 0.99, log = FALSE)
 
-Import amenity types.
-```{r}
+detach(ttm_all_dest_wts)
+
+par(mfrow = c(2, 2))
+
+plot(density(second_scoring$score))
+summary(second_scoring$score)
+
+```
+
+---
+
+## Unweighted Accessibility to nearest 1, 2, and 3 amenities by amenity type
+
+#### Due to the diverse functionality of different amenities, we will consider them separate for accessibility computation.
+
+#### Import amenity types
+
+```{r kable.opts=list(caption='Summary Table')}
 amenities <- read.csv('../data/clean/vancouver_facilities_2.csv')
-head(amenities)
+
+sample_n(amenities, 3)
 
 amenities <- amenities[,c(1,4)] # only need id and type columns
 amenities$id <- as.factor(amenities$id)     # convert to factor
 amenities$type <- as.factor(amenities$type) # convert to factor
 
-head(amenities)
-amenities %>% group_by(type) %>% summarise(count = n())
+sample_n(amenities, 3)
+
+amenities %>% group_by(type) %>% summarise(count = n()) %>% arrange(desc(count))
 
 ```
 
-Join type factor to ttm.
+#### Join amenity type factor to the ttm
 ```{r}
 ttm_amenities <- ttm %>% left_join(amenities, by = c('toId' = 'id'))
-head(ttm_amenities)
+sample_n(ttm_amenities, 5)
+
 ```
 
-Aggregate on type to get nearest destination times.
-```{r}
+#### Aggregate on amenity type to get the nearest destination times a
+```{r message=FALSE, warning=FALSE}
+
 ttm_amenities_agg <- ttm_amenities %>%
                      group_by(fromId, type) %>%
-                     summarise(nearest1 = min(avg_unique_time, na.rm = TRUE) + 5, # add 4min to prevent inf scores later
-                               nearest2 = mean(sort(avg_unique_time)[1:2], na.rm = TRUE) + 5,
-                               nearest3 = mean(sort(avg_unique_time)[1:3], na.rm = TRUE) + 5,
-                               sd1 = log(sd_unique_time[which.min(avg_unique_time)]+ 10), # add 10 min to prevent inf
-                               sd2 = log(mean(sort(sd_unique_time)[1:2], na.rm = TRUE)+ 10),
-                               sd3 = log(mean(sort(sd_unique_time)[1:3], na.rm = TRUE)+ 10))
+                     summarise(nearest1 = min(avg_unique_time), 
+                               nearest2 = mean(sort(avg_unique_time)[1:2], na.rm = TRUE), # minumum 2
+                               nearest3 = mean(sort(avg_unique_time)[1:3], na.rm = TRUE), # minimum 3
+                               sd1 = sd_unique_time[which.min(avg_unique_time)],
+                               sd2 = mean(sort(sd_unique_time)[1:2], na.rm = TRUE),
+                               sd3 = mean(sort(sd_unique_time)[1:3], na.rm = TRUE))
 
-head(ttm_amenities_agg)
+# Normalize
+normalized_ttm_amenities_agg <- normalize_df(ttm_amenities_agg)
 
-ttm_amenities_agg_normalized <- normalize(ttm_amenities_agg)
-head(ttm_amenities_agg_normalized)
+# Log Normalize
+log_normalized_ttm_amenities_agg <- normalize_df(ttm_amenities_agg, log = TRUE)
+
+
 ```
 
-Visualize destination time density from nearest to nearest 1-3 amenities of a given type.
-```{r}
-# The SDs are horribly skewed so we'll take the log so our scores aren't as skewed.
+#### Visualize normalized and original data distributions
+
+```{r message=FALSE, warning=FALSE}
 par(mfrow = c(2,3))
-plot(density(ttm_amenities_agg$nearest1))
-plot(density(ttm_amenities_agg$nearest2))
-plot(density(ttm_amenities_agg$nearest3))
-plot(density(ttm_amenities_agg$sd1))
-plot(density(ttm_amenities_agg$sd2))
-plot(density(ttm_amenities_agg$sd3))
 
+# Normalized
+attach(normalized_ttm_amenities_agg)
+plot(density(nearest1), main = 'Nearest 1 Travel Time Density')
+plot(density(nearest2), main = 'N2 TTD')
+plot(density(nearest3), main = 'N3 TTD')
+plot(density(sd1), main = 'Nearest 1 Standard Deviation Density')
+plot(density(sd2), main = 'N2 SDD')
+plot(density(sd3), main = 'N3 SDD')
+detach(normalized_ttm_amenities_agg)
+
+# Log Normalized
+attach(log_normalized_ttm_amenities_agg)
+plot(density(nearest1), main = 'Nearest 1 Travel Time Density')
+plot(density(nearest2), main = 'N2 TTD')
+plot(density(nearest3), main = 'N3 TTD')
+plot(density(sd1), main = 'Nearest 1 Standard Deviation Density')
+plot(density(sd2), main = 'N2 SDD')
+plot(density(sd3), main = 'N3 SDD')
+detach(log_normalized_ttm_amenities_agg)
 ```
 
-```{r}
-# Much better
-par(mfrow = c(2,3))
-plot(density(ttm_amenities_agg$nearest1))
-plot(density(ttm_amenities_agg$nearest2))
-plot(density(ttm_amenities_agg$nearest3))
-plot(density(ttm_amenities_agg$sd1))
-plot(density(ttm_amenities_agg$sd2))
-plot(density(ttm_amenities_agg$sd3))
 
-```
 
-Compute 9x3 sets of scores.
-Three for the nearest 1, nearest 2, and nearest 3 amenities.
-Nine for the 9 different types of amenities.
+#### Compute scores for each amenity type and nearest x condition
+
+***Since there are 9 amenity types and 3 nearest x conditions, we'll have a total of 27 score sets.***
 
 ```{r}
 
-nearest1_set <- split(ttm_amenities_agg_normalized[, c(1,3,6)], ttm_amenities_agg$type)
-nearest2_set <- split(ttm_amenities_agg_normalized[, c(1,4,7)], ttm_amenities_agg$type)
-nearest2_set <- split(ttm_amenities_agg_normalized[, c(1,5,8)], ttm_amenities_agg$type)
-
-score_lists <- function(lst_of_df, nearest_destinations = NULL) {
+# desperate function for applying over lists where argument is column name
+score_lists <- function(dfs, nearest_destinations = NULL, log = FALSE) {
+  
   library(rlist)
   collection <- NULL
   
   if (is.null(nearest_destinations)) { 
+    
     print('Nearest destinations must be between 1 and 3 inclusive')
     return(NULL)
-  } else if (nearest_destinations == 1) {
-    # iterate over lists because I can't get column arguments to work in apply type fxns
-    for (df in 1:length(lst_of_df)) {
-      score <- naive_score(lst_of_df[[df]]$fromId,lst_of_df[[df]]$nearest1,lst_of_df[[df]]$sd1, n_accessible = 1)
-      print(head(score))
-      collection[[df]] <- score
-    }
     
-  } else if (nearest_destinations == 2) {
+  } else if (nearest_destinations == 1) {
+    
     # iterate over lists because I can't get column arguments to work in apply type fxns
-    for (df in 1:length(lst_of_df)) {
-      score <- naive_score(lst_of_df[[df]]$fromId,lst_of_df[[df]]$nearest2,lst_of_df[[df]]$sd2, n_accessible = 2)
-      collection[[df]] <- score
+    for (df in 1:length(dfs)) {
+      score_df <- naive_score2(dfs[[df]]$fromId, dfs[[df]]$nearest1, dfs[[df]]$sd1, log = log)
+      collection[[df]] <- score_df
+    }
+  } else if (nearest_destinations == 2) {
+    
+    # iterate over lists because I can't get column arguments to work in apply type fxns
+    for (df in 1:length(dfs)) {
+      score_df <- naive_score2(dfs[[df]]$fromId, dfs[[df]]$nearest2, dfs[[df]]$sd2, log = log)
+      collection[[df]] <- score_df
     }
   } else if (nearest_destinations == 3) {
     
     # iterate over lists because I can't get column arguments to work in apply type fxns
-    for (df in 1:length(lst_of_df)) {
-      score <- naive_score(lst_of_df[[df]]$fromId,lst_of_df[[df]]$nearest3,lst_of_df[[df]]$sd3, n_accessible = 3)
-      collection[[df]] <- score
+    for (df in 1:length(dfs)) {
+      score_df <- naive_score2(dfs[[df]]$fromId, dfs[[df]]$nearest3, dfs[[df]]$sd3, log = log)
+      collection[[df]] <- score_df
     }
   }
   collection
 }
 
+```
 
-# TEST THE SCORING
-tmp_score <- naive_score(nearest1_set[[1]]$fromId, nearest1_set[[1]]$nearest1, nearest1_set[[1]]$sd1, n_accessible = 1)$score
+```{r message=FALSE, warning=FALSE}
 
-# SEE SCORE DISTRIBUTION --> very bad
-plot(density(tmp_score))
-summary(tmp_score)
-summary(nearest1_set[[1]])
+# list of dataframes for each amenity type
+attach(normalized_ttm_amenities_agg)
+nearest1_set <- split(normalized_ttm_amenities_agg[, c(1,3,6)], type)
+nearest2_set <- split(normalized_ttm_amenities_agg[, c(1,4,7)], type)
+nearest3_set <- split(normalized_ttm_amenities_agg[, c(1,5,8)], type)
+detach(normalized_ttm_amenities_agg)
 
-#nearest1_score_set <- score_lists(nearest1_set, nearest_destinations = 1)
+
+nearest1_score_set <- score_lists(nearest1_set, nearest_destinations = 1, log = TRUE)
+nearest2_score_set <- score_lists(nearest2_set, nearest_destinations = 2, log = TRUE)
+nearest3_score_set <- score_lists(nearest3_set, nearest_destinations = 3, log = TRUE)
+
+```
+
+
+#### Visualize scores for different amenities and the nearest neighbour factor
+
+```{r}
+par(mfrow = c(3, 3))
+
+all_scores <- list(nearest1_score_set, nearest2_score_set, nearest3_score_set)
+
+plot_density <- function(df, title) {
+  plot(density(df$score), main = title)
+}
+
+## Visualize Score Densities
+
+for (n in 1:3) {
+  for (i in seq_along(names(nearest1_set))) {
+    vec <- all_scores[[n]][[i]]['score']
+    plot_density(vec, title = glue::glue('Nearest {n} ({names(nearest1_set)[i]})'))
+  }
+}
 
 ```
 
 
 
+---
+
+## Exporting all Score Sets
+
+```{r}
+
+# First scoring
+write.csv(first_scoring, '../data/score_sets/all_destination_scores.csv')
+
+# Second scoring
+write.csv(second_scoring, '../data/score_sets/all_destination__simulated_weighted_scores.csv')
+
+# Nearest 1 scoring
+for (i in seq_along(names(nearest1_set))) {
+  name <- gsub('/', '_', gsub(' ', '_', names(nearest1_set)[i]))
+  write.csv(nearest1_set[i], glue::glue('../data/score_sets/nearest1_{name}_scores.csv'))
+}
+
+# Nearest 3 scoring
+for (i in seq_along(names(nearest3_set))) {
+  name <- gsub('/', '_', gsub(' ', '_', names(nearest3_set)[i]))
+  write.csv(nearest3_set[i], glue::glue('../data/score_sets/nearest3_{name}_scores.csv'))
+}
+
+```
 
 
 
