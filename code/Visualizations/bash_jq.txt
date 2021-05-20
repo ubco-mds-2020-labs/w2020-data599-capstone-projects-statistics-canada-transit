@@ -1,0 +1,24 @@
+check jq version:
+./jq-win64.exe --version
+
+alias to the .exe in the current directory for ease of calling
+alias jq=./jq-win64.exe
+
+test
+echo '{"foo": 0}' | jq
+
+create json object with custom keys and values; this one only creates a json of length 1
+jq '{CMANAME: .features[1].properties.CMANAME,
+	 DBUID: .features[1].properties.DBUID,
+	 geometry: .features[1].geometry}' canada_db.geojson
+
+with pipe
+jq '.features[1] | {CMANAME: .properties.CMANAME, DBUID: .properties.DBUID, geometry: .geometry}' canada_db.geojson
+
+
+
+## not functional yet### with pipe and mapped select filter
+jq '.features | map(select(.properties.CMANAME=="Vancouver")) | {DBUID: .properties.DBUID, geometry: .geometry}' canada_db.geojson
+
+export only van information with pipe and mapped select filter
+jq '.features | map(select(.properties.CMANAME=="Vancouver"))' canada_db.geojson > van_polys.json
