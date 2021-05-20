@@ -1,0 +1,159 @@
+---
+title: "Amenity index"
+author: "Yuxuan"
+date: "18/05/2021"
+output:
+  pdf_document: default
+  html_document: default
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+***Import libraries***
+```{r message=FALSE, warning=FALSE}
+library(dplyr)
+library(readr)
+library(ggplot2)
+library(tidyr)
+library(imputeTS)
+library(qwraps2)
+options(qwraps2_markup='markdown')
+library(hablar)
+```
+
+***Import data***
+```{R message=FALSE, warning=FALSE}
+review_poi<- read_csv("~/Desktop/MDS/data599/google-reviews-arts/google_reviews_poi_with_hours.csv")
+van_poi<-read_csv("~/Desktop/MDS/data599/w2020-data599-capstone-projects-statistics-canada-transit/data/clean/vancouver_facilities_2.csv")
+```
+
+Merge review dataset with vancouver point of interest
+```{R}
+left_join(review_poi,van_poi,by=c("poi_name"="name"))%>%distinct()->merged_data
+```
+
+**Convert the data to numeric **
+```{R}
+merged_data%>% convert(num(Rating, Total_Review,open_days,Total_hours))->merged_data
+
+```
+
+
+**Number of amenity in each type of arts facility **
+```{R}
+merged_data%>%group_by(type)%>%count()
+```
+***EDA on museum***
+```{R}
+merged_data%>%filter(type=="museum")%>%arrange(desc(Total_Review))%>%distinct()->poi_museum
+poi_museum%>%select(poi_name,open_days,Total_hours,Rating,Total_Review)->poi_museum
+```
+
+
+**Find the percentage of NAs in poi_museum**
+```{R}
+
+poi_museum[poi_museum == 0] <- NA
+colMeans(is.na(poi_museum))
+
+```
+
+
+**Fill na value with its mean**
+```{R}
+poi_museum<-na_mean(poi_museum)
+```
+
+**museum summary table**
+```{R results='asis'}
+summary<- list(
+  "Rating"=list(
+    "min"= ~ min(Rating,na.rm = TRUE),
+    "max"= ~ max(Rating,na.rm = TRUE),
+    "mean"= ~ mean(Rating,na.rm = TRUE)),
+  
+  "Total_Review"=list(
+    "min"= ~ min(Total_Review,na.rm = TRUE),
+    "max"= ~ max(Total_Review,na.rm = TRUE),
+    "mean"= ~ mean(Total_Review,na.rm = TRUE)),
+  
+  "Total_hours"=list(
+    "min"= ~ min(Total_hours,na.rm = TRUE),
+    "max"= ~ max(Total_hours,na.rm = TRUE),
+    "standard deviation"= ~ sd(Total_hours,na.rm = TRUE),
+    "mean"= ~ mean(Total_hours,na.rm = TRUE)),
+  
+  "Open_days"=list(
+    "min"= ~ min(open_days,na.rm = TRUE),
+    "max"= ~ max(open_days,na.rm = TRUE),
+     "standard deviation"= ~ sd(open_days,na.rm = TRUE),
+    "mean"= ~ mean(open_days,na.rm = TRUE))
+    
+  
+  
+)
+
+
+whole<-summary_table(poi_museum,summary)
+whole
+summary(poi_museum)
+```
+
+**Unnormalized density plot of museum**
+```{R}
+par(mfrow = c(3, 2))
+plot(density(unlist(poi_museum[,2])), main = 'Unnormalized Museum Open Days Distribution')
+plot(density(unlist(poi_museum[,3])), main = 'Unnormalized Museum Operation Hours Distribution')
+plot(density(unlist(poi_museum[,4])), main = 'Unnormalized Museum Rating Distribution')
+plot(density(unlist(poi_museum[,5])), main = 'Unnormalized Museum Total Review Distribution')
+
+
+```
+
+
+
+
+
+### Normalization/ Min-Max scaling
+
+$$Transformed.Values=\frac{Values-Mean}{Max-Min}$$
+```{R}
+##################################
+## Computing Museum Weight Index
+##################################
+poi_museum$Rating<-as.numeric(poi_museum$Rating)
+normalize <- function(x) {
+return ((x - min(x)) / (max(x) - min(x)))
+}
+Norm_museum<-poi_museum%>%na.omit()%>% mutate_if(is.numeric, normalize)
+
+```
+
+
+```{R}
+# Navie weighted index 
+Norm_museum%>%mutate(Index=(open_days+Total_hours+Rating+Total_Review)/4)->Norm_museum
+```
+
+
+
+```{R}
+par(mfrow = c(3, 2))
+plot(density(unlist(Norm_museum[,2])), main = 'Museum Open Days Distribution')
+plot(density(unlist(Norm_museum[,3])), main = 'Museum Operation Hours Distribution')
+plot(density(unlist(Norm_museum[,4])), main = 'Museum Rating Distribution')
+plot(density(unlist(Norm_museum[,5])), main = 'Museum Total Review Distribution')
+plot(density(unlist(Norm_museum[,6])), main = 'Museum Weight Index Distribution')
+```
+
+
+
+### will develop a general function to compute all amenity 
+
+## will do it later tonight or on Sunday
+
+
+
+
