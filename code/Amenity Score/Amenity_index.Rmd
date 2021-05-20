@@ -3,8 +3,8 @@ title: "Amenity index"
 author: "Yuxuan"
 date: "18/05/2021"
 output:
-  pdf_document: default
   html_document: default
+  pdf_document: default
 ---
 
 ```{r setup, include=FALSE}
@@ -127,7 +127,7 @@ poi_museum$Rating<-as.numeric(poi_museum$Rating)
 normalize <- function(x) {
 return ((x - min(x)) / (max(x) - min(x)))
 }
-Norm_museum<-poi_museum%>%na.omit()%>% mutate_if(is.numeric, normalize)
+Norm_museum<-poi_museum%>%mutate_if(is.numeric, normalize)
 
 ```
 
@@ -137,6 +137,10 @@ Norm_museum<-poi_museum%>%na.omit()%>% mutate_if(is.numeric, normalize)
 Norm_museum%>%mutate(Index=(open_days+Total_hours+Rating+Total_Review)/4)->Norm_museum
 ```
 
+```{R}
+
+head(Norm_museum)
+```
 
 
 ```{R}
