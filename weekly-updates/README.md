@@ -33,6 +33,9 @@ Place your weekly status updates in this folder before your weekly meeting.
 - Fixed small errors in score set exports and finished interactive map score visualization in leaflet (Luka)
 - Started ggplot visualizations in ggplot, tmap, and leaflet libraries (Luka)
 - Wrote custom range normalization functions, scoring functions, improved score script comments, and created a accessibility score set folder (Luka)
+- Tested Facebook and Twitter API for review data (Yuxuan)
+- Generated opening days and hours data for point of interests from google place (Yuxuan)
+- Built POI (Museum) Index weight using the google place data (Yuxuan)
 
 ### Week 1 (May 10 - May 14)
 - Removed duplicate travel time matrix csvs (Luka)
