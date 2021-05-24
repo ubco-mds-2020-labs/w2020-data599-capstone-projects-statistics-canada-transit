@@ -27,8 +27,9 @@ Place your weekly status updates in this folder before your weekly meeting.
 ### Week 2 (May 17 - May 21)
 - Created visualization of scores in Vancouver using python (Graham)
 - Researched R Shiny and Dash for dahsboard visualizations (Graham)
-- Fixed small errors in score set exports and finished interactive map score visualization in leaflet (Luka)
-- Started ggplot visualizations in ggplot, tmap, and leaflet libraries (Luka)
+- Created visualization of scores for different DBs in GVA using local Kepler (Rain)
+- Tried adding on the capcity of libraries to scores (Rain)
+- Started ggplot visualizations
 - Wrote custom range normalization functions, scoring functions, improved score script comments, and created a accessibility score set folder (Luka)
 
 ### Week 1 (May 10 - May 14)
