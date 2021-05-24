@@ -33,6 +33,7 @@ Place your weekly status updates in this folder before your weekly meeting.
 ### Week 1 (May 10 - May 14)
 - Removed duplicate travel time matrix csvs (Luka)
 - Wrote an initial DB score computation script and ran it using 3k of 15k origins at 36 departure times (generated a 36 billion row dataframe) (Luka)
+- Computed travel time matrix and created visualization using UrbanAccess with Pandana (Rain)
 - Updated the CDB data wrangling file to output a CSV with standardized column names (Graham)
 - Discussed and planned out the high level data manipulation and score computing (All)
 - Built web scraper to collect cultural POIT review counts (Yuxuan)
