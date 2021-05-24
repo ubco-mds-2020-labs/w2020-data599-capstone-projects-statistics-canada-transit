@@ -25,6 +25,7 @@ Place your weekly status updates in this folder before your weekly meeting.
 ### Week 3 (May 24 - May 28)
 
 ### Week 2 (May 17 - May 21)
+- Researched R Shiny and Dash for dahsboard visualizations (Graham)
 - Started ggplot visualizations
 - Wrote custom range normalization functions, scoring functions, improved score script comments, and created a accessibility score set folder (Luka)
 
