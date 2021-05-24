@@ -29,7 +29,9 @@ Place your weekly status updates in this folder before your weekly meeting.
 - Researched R Shiny and Dash for dahsboard visualizations (Graham)
 - Created visualization of scores for different DBs in GVA using local Kepler (Rain)
 - Tried adding on the capcity of libraries to scores (Rain)
-- Started ggplot visualizations
+- Used scripting in gitbash (via jq library) to extract 36 megabytes of Vancouver polygon data from 1.6 gigabytes of Canada wide geoJson polygon data (Luka)
+- Fixed small errors in score set exports and finished interactive map score visualization in leaflet (Luka)
+- Started ggplot visualizations in ggplot, tmap, and leaflet libraries (Luka)
 - Wrote custom range normalization functions, scoring functions, improved score script comments, and created a accessibility score set folder (Luka)
 
 ### Week 1 (May 10 - May 14)
