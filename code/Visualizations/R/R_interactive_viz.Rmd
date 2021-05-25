@@ -171,12 +171,6 @@ for (i in 1:length(score.names)) {
 
 ```
 
-```{r}
-
-map_collection
-
-
-```
 
 
 
