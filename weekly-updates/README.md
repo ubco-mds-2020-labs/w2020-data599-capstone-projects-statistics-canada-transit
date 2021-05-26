@@ -23,6 +23,10 @@ Place your weekly status updates in this folder before your weekly meeting.
 ### Week 4 (May 31 - June 4)
 
 ### Week 3 (May 24 - May 28)
+- Created an outline for the final report (All)
+- Explored downtown public library outlier point. Found that slight modifications of the coordinates fixes the problem which still has an unknown underlying cause (Luka)
+- Created HTML map renders for all score sets using a special score import function (Luka)
+- Team meeting and presentation preparation (All)
 
 ### Week 2 (May 17 - May 21)
 - Created visualization of scores in Vancouver using python (Graham)
