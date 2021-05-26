@@ -27,7 +27,7 @@ Place your weekly status updates in this folder before your weekly meeting.
 - Explored downtown public library outlier point. Found that slight modifications of the coordinates fixes the problem which still has an unknown underlying cause (Luka)
 - Created HTML map renders for all score sets using a special score import function (Luka)
 - Team meeting and presentation preparation (All)
-- Created amenity index function which will return the amenity weights(Yuxuan)
+- Created a general amenity index function which will return the amenity weights for any type of interest(Yuxuan)
 
 ### Week 2 (May 17 - May 21)
 - Created visualization of scores in Vancouver using python (Graham)
