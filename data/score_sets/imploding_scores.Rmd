@@ -1,0 +1,57 @@
+
+```{r}
+library(tidyverse)
+```
+
+```{r}
+
+df <- read.csv('type_destination_scores.csv')
+
+col_names_space <- unique(df$type)
+
+col_names_to_keep_space <- col_names_space[c(3, 5, 7, 8)]
+
+col_names <- str_replace_all(col_names_to_keep_space, ' ', '_')
+
+
+df <- df[df$type %in% col_names_to_keep_space, ]
+
+mat <- df[1:1000, ] %>% spread(fromId, score, fill = NA, convert = FALSE) %>% t()
+
+mat
+```
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+```{r}
+```
+
+
+
