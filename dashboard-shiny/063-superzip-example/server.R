@@ -8,25 +8,27 @@ library(tidyverse)
 
 
 # Import MDS data
-canada_dbs <- st_read("../../code/Visualizations/census_2016_digital_DBS_gml_cartographic/ldb_000b16g_e.gml")
+canada_dbs <- st_read("../../code/Visualizations/R/Census_DBs_2016_Digital_Cartographic.gml")
 
 
 # keep necessary columns and rows
 van_dbs <- data.frame(canada_dbs[which(canada_dbs$CMANAME == "Vancouver"), ])
 clean_van_dbs <- van_dbs[, c(1, 2, 29)]
+clean_van_dbs$DBUID<-as.character(clean_van_dbs$DBUID)
 
 # score data
 #nearest_gallery_scores <- read.csv("../../data/score_sets/nearest1_gallery_scores.csv")
 #nearest_gallery_scores$fromId <- as.character(nearest_gallery_scores$fromId)
 
-input <- read.csv("../../data/score_sets/vancouver_db_details.csv")
-input$fromId <- as.character(input$id)
+input <- read.csv("../../data/score_sets/long_score.csv")
+input$fromId <- as.character(input$fromId)
 
 # join
 van_dbs_scores <- left_join(clean_van_dbs, input, by = c('DBUID' = 'fromId'))
 head(van_dbs_scores)
 
 # convert back to sf object
+
 van_dbs_scores_sf <- st_as_sf(van_dbs_scores)
 van_dbs_scores_st <- st_transform(van_dbs_scores_sf,crs = 4326)
 
@@ -51,16 +53,29 @@ function(input, output, session) {
     leaflet(van_dbs_scores_st) %>%
     addPolygons(
       stroke = FALSE,  # remove polygon borders
-      fillColor = ~pal_fun(score), # set fill colour with pallette fxn from aboc
-      fillOpacity = ~factop(score), smoothFactor = 0.5, # aesthetics
+      fillColor = ~pal_fun(value), # set fill colour with pallette fxn from aboc
+      fillOpacity = ~factop(value), smoothFactor = 0.5, # aesthetics
       popup = p_popup) %>% # add message popup to each block
     addTiles() %>%
       setView(lng = -122.8, lat = 49.2, zoom = 11) %>%
     addLegend("bottomleft",  # location
               pal=pal_fun,    # palette function
-              values=~score,  # value to be passed to palette function
+              values=~value,  # value to be passed to palette function
               title = "Vancouver Gallery Transit Accessibility") # legend title
-  })
+  }
+  # Change the choices for the second selection on the basis of the input to the first selection
+  #   output$secondSelection <- renderUI({
+  #   choice_second <- as.list(unique(van_dbs_scores_sf$type[which(van_dbs_scores_sf$Scoring_Scheme == input$Scoring_Scheme)]))
+  #   selectInput(inputId = "type", choices = choice_second,
+  #               label = "Choose the type for which you want to see the data:")
+  # })
+  
+  
+  
+  
+  
+  )
+  
 
   
   # A reactive expression that returns the set of zips that are

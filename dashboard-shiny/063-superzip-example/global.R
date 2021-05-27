@@ -1,13 +1,15 @@
 library(dplyr)
 
-allblocks <- read.csv("../../data/score_sets/vancouver_db_details.csv")
+allblocks <- read.csv("../../data/score_sets/long_score.csv")
 allblocks$pop <- as.numeric(allblocks$pop)
-allblocks$id <- jitter(allblocks$id)
+allblocks$id <- jitter(allblocks$fromId)
 allblocks$population <- jitter(allblocks$pop)
 allblocks$latitude <- jitter(allblocks$lat)
 allblocks$longitude <- jitter(allblocks$lon)
-allblocks$score <- jitter(allblocks$score)
-row.names(allblocks) <- allblocks$id
+allblocks$score <- jitter(allblocks$value)
+
+row.names(allblocks) <-seq.int(nrow(allblocks))
+
 
 cleantable <- allblocks %>%
   select(
