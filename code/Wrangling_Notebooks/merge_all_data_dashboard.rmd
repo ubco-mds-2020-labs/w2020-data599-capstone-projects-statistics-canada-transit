@@ -1,0 +1,91 @@
+---
+title: "R Notebook"
+output: html_notebook
+---
+
+```{r}
+### Load Canada Shape File into R and Save Vancouver Polygons as a Checkpoint
+
+library(RColorBrewer)
+library(scales)
+library(lattice)
+library(dplyr)
+library(sf)
+library(tidyverse)
+library(data.table)
+
+# geo data
+# takes a long time // see google drive for the census file
+canada_dbs <- st_read("../../code/Visualizations/census_2016_digital_DBS_gml_cartographic/ldb_000b16g_e.gml")
+dbAttributes <- read.csv("../../data/clean/vancouver_db.csv")
+#input$fromId <- as.character(input$id)
+
+# keep necessary columns and rows
+van_dbs <- data.frame(canada_dbs[which(canada_dbs$CMANAME == "Vancouver"), ])
+clean_van_dbs <- van_dbs[, c(1, 2, 29)]
+
+
+### Load Score Sets
+
+# Function to recursively import score sets from score set directory
+import_scores <- function(path) {
+  
+  # Get list of files in path directory
+  data_files <- list.files(path = path, recursive=T)
+  
+  # Function to pull file data into R
+  data_puller <- function(path, file) { data <- read.csv(glue::glue('{path}/{file}')) }
+  data_list <- lapply(data_files, data_puller, path = path)
+  
+  # Remove the '.csv' from file endings
+  indx_to_keep <- nchar(data_files)-4
+  names(data_list) <- mapply(substr, data_files, start = 1, stop = indx_to_keep, USE.NAMES = FALSE)
+  
+  # reduce to a single dataframe
+  scores <- data_list %>% reduce(left_join, by = c('fromId')) 
+  names(scores) <- c('fromId', names(data_list))
+  
+  scores
+}
+
+scores <- import_scores("../../data/score_sets")
+
+
+# convert fromId column to character
+scores$fromId <- as.character(scores$fromId)
+names(scores)[ncol(scores)] <- "amenity_type"
+
+
+
+# subset dataset based on formatting
+colnames_space <- unique(scores$amenity_type)
+filtered_scores <- scores[scores$amenity_type %in% colnames_space[c(3,5,7,8)], ]
+amenityScores <- subset(filtered_scores, select = c(1,ncol(scores)-1,ncol(scores)))
+scoresUnique <- aggregate(. ~fromId,subset(filtered_scores, select = -c(ncol(scores)-1, ncol(scores))), mean)
+
+
+
+# Implode data frame based on amenity types
+amenities_filtered <- amenityScores%>% spread(fromId, type_destination_scores, fill = NA, convert = FALSE) %>% t() %>% as.data.frame()
+
+#Reformat data frame 
+newColumns <- c("gallery_scores", "library_archives_scores", "museum_score", "theatre_concert_hall_scores")
+setnames(amenities_filtered[-1,], old = c("V1","V2","V3","V4"), new = newColumns)
+amenities_filtered <- amenities_filtered[-1,]
+amenities_filtered <- cbind(fromId = rownames(amenities_filtered), amenities_filtered)
+rownames(amenities_filtered) <- 1:nrow(amenities_filtered)
+amenities_filtered[newColumns] <- lapply(amenities_filtered[newColumns],as.numeric) %>% as.data.frame()
+
+#merge into complete dataset
+allscores <- merge(x = scoresUnique, y = amenities_filtered, on = fromId)
+
+dbAttributes <- read.csv("../../data/clean/vancouver_db.csv")
+attributes <- filter(dbAttributes, id %in% allscores$fromId)
+setnames(dbAttributes, old = "id", new = "fromId")
+allblocks <- merge(x = allscores, y = attributes, on = fromId, keep = FALSE)[-2]
+
+write.csv(allblocks,"../../data/clean/vancouver_db_allscores.csv", row.names = FALSE)
+```
+
+
+
