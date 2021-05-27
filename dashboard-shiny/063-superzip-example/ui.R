@@ -1,12 +1,10 @@
 library(leaflet)
 
 # Choices for drop-downs
+
 vars <- c(
-  "Shortest Route" = "superzip",
-  "Centile score" = "centile",
-  "College education" = "college",
-  "Median income" = "income",
-  "All amenities" = "adultpop"
+  "Naive Weighted Score" = "score_1",
+  "Naive Unweighted Score"="score_2"
 )
 
 
@@ -30,13 +28,21 @@ navbarPage("Transit Accessibility Dashboard", id="nav",
         width = 330, height = "auto",
 
         h2("BLOCKS explorer"),
-
-        selectInput("color", "Scoring Scheme", vars),
-        selectInput("size", "Amenity Type", vars, selected = "adultpop"),
-        conditionalPanel("input.color == 'superzip' || input.size == 'superzip'",
-          # Only prompt for threshold when coloring or sizing by superzip
-          numericInput("threshold", "Number of Amenities", "All")
-        ),
+        
+        # First input: Scoring Scheme
+        selectInput(inputId = "score_scheme", label="Scoring Scheme", choices = list(  "Naive Weighted Score" = "score_1",
+                                                                                       "Naive Unweighted Score"="score_2")),
+        
+    
+        # Second input (choices depend on the choice for the first input)
+        uiOutput("secondSelection"),
+        
+        
+        
+       # selectInput("size", "Amenity Type", vars, selected = "adultpop"),
+        choice_second <- as.list(unique(van_dbs_scores_sf$type[which(van_dbs_scores_sf$Scoring_Scheme == input$Scoring_Scheme)])),
+       
+        selectInput(inputId = "type", choices = choice_second, label = "Choose the type for which you want to see the data:"),
 
         plotOutput("histCentile", height = 200),
         plotOutput("scatterCollegeIncome", height = 250)

@@ -28,6 +28,7 @@ Place your weekly status updates in this folder before your weekly meeting.
 - Created HTML map renders for all score sets using a special score import function (Luka)
 - Team meeting and presentation preparation (All)
 - Created a general amenity index function which will return the amenity weights for any type of interest(Yuxuan)
+- Collected and merged library information - total area, number of annual visitors, volume of physical copies (Rain)
 
 ### Week 2 (May 17 - May 21)
 - Created visualization of scores in Vancouver using python (Graham)
