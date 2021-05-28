@@ -18,10 +18,6 @@ library(rJava)
 library(sf)
 library(data.table)
 
-# Visualization
-library(ggplot2)
-library(mapview); mapviewOptions(platform = 'leafgl')
-
 # Convenience
 library(tidyverse)
 library(glue)
@@ -49,12 +45,29 @@ r5r_core <- setup_r5(data_path = getwd(), verbose = FALSE)
 
 # Dissemination Blocks
 origins <- fread(file.path("../../data/clean", "vancouver_db.csv"))
+paste('Origin Rows: ', nrow(origins))
+
 origins <- origins[, c(1,3,4)]
 colnames(origins)[1] <- 'id'
 origins$id <- as.character(origins$id)  # numeric to char
 
+# Peek
+head(origins)
+```
+
+```{r message=FALSE, warning=FALSE}
 # Cultural/Art facilities
 destinations <- fread(file.path("../../data/clean", "vancouver_facilities_2.csv"))
+paste('Original Destinations: ', nrow(destinations))
+
+# See summary counts of each amenity
+destinations %>% group_by(type) %>% summarise(count = n()) %>% arrange(desc(count))
+
+# Filter amenity types to keep amenities of interest**
+target_amenities <- c('gallery', 'museum', 'library or archives', 'theatre/performance and concert hall')
+destinations <- destinations %>% filter(type %in% target_amenities)
+
+# Keep only id, lat, and lon columns
 destinations <- destinations[, 1:3]
 
 destinations$lat <-  as.numeric(destinations$lat) # char to numeric
@@ -62,23 +75,15 @@ destinations$lon <-  as.numeric(destinations$lon) # char to numeric
 destinations$id <- as.character(destinations$id)  # numeric to char
 
 destinations <- destinations[complete.cases(destinations)] # remove NA rows
+paste('Filtered Destinations: ', nrow(destinations))
 
 # Peek
-head(origins)
 head(destinations)
 
-# Check
-c(nrow(origins), nrow(unique(origins[,1])))
-c(nrow(destinations), nrow(unique(destinations[,1])))
 ```
 
-```{r}
-## Testing samples
-#sample_origins <- origins[sample(.N, 3000)]
-#sample_destinations <- destinations[sample(.N, 432)] # uses all destinations
-#sample_origins
-#sample_destinations
-```
+
+
 
 
 ### 3. Set constraints
@@ -144,39 +149,45 @@ print('COMPLETED')
 summary(TTM)
 ```
 
-```{r}
-TTM_agg
-```
 
-### 5. Aggregate Travel Time Matrix without any Destination Weights
-
-- In order to avoid NA or inf values in the score computation, we need to replace all standard deviations that are zero or NA with an appropriate value.
-- A zero standard deviation can be replaced with the 1% quantile
-- An NA standard deviation is due to there only being 1 sample in the computation. Since there's only a single possible trip we'll assume the variation in operation is higher than average, so the 80% quantile in variation will be used as replacement.
+### 5. Aggregate Travel Time Matrix 
 
 ```{r}
-
-# aggregate on each unique transit trip to computed the avg trip travel
+# aggregate on each unique transit trip to compute the avg time
 # time to the same destination
 TTM_agg <- TTM %>%
            group_by(fromId, toId) %>% 
            summarise(
-             avg_unique_time = mean(travel_time), 
-             sd_unique_time = sd(travel_time)
+             avg_time = mean(travel_time), 
+             sd_time = sd(travel_time)
            )
 
-print('First aggregation:'); summary(TTM_agg)
+paste('First aggregation:')
+summary(TTM_agg)
 
-# fill NAs in standard deviation with 80th percentile value
-upper80_sd <- quantile(TTM_agg$sd_unique_time, 0.8, na.rm=TRUE)
-TTM_agg <- TTM_agg %>% replace_na(list('sd_unique_time'=upper80_sd))
+```
 
-# replace zero standard deviations to avoid infinity computations later on
-lower01_sd <- quantile(TTM_agg$sd_unique_time, 0.01, na.rm=TRUE)
-TTM_agg$sd_unique_time[(TTM_agg$sd_unique_time == 0)] <-  lower01_sd
 
-print('First Aggregation with sd NAs+Zeros replaced:'); summary(TTM_agg)
 
+### 6. Fix Odd Values in sd_time
+
+```{r}
+
+# replace NAs with median value
+# even if these are rare trips (1 trip means NA in sd)
+# the bus still probably comes on a regular schedule with uncertainty like most stops
+median_sd <- median(TTM_agg$sd_time, na.rm=TRUE)
+TTM_agg <- TTM_agg %>% replace_na(list('sd_time'=median_sd))
+
+# replace <=1 with 1 to avoid large or infinity computations later on
+TTM_agg$sd_time[(TTM_agg$sd_time <= 1)] <-  1
+
+paste('Clean TTM Aggregation:')
+summary(TTM_agg)
+```
+
+### 7. Export
+```{r}
 # Export for later manipulation
 write.csv(TTM_agg, "../../data/clean/ttm.csv", row.names = FALSE)
 
