@@ -1,10 +1,10 @@
 ---
 title: "Score Computation Notebook"
 output:
+  pdf_document: default
+  html_notebook: default
   html_document:
     df_print: paged
-  html_notebook: default
-  pdf_document: default
 ---
 
 # Purpose
@@ -112,6 +112,9 @@ amenities %>% group_by(type) %>% summarise(count = n()) %>% arrange(desc(count))
 
 ttm <- ttm %>% left_join(amenities, by = c('toId' = 'id'))
 
+names(ttm)[names(ttm) == 'avg_unique_time'] <- "avg_time"
+names(ttm)[names(ttm) == 'sd_unique_time'] <- "sd_time"
+
 summary(ttm[,3:4])
 sample_n(ttm, 5)
 
@@ -127,6 +130,7 @@ This is done to prevent infinity values in the scoring. Normalization will be do
 
 ```{r}
 par(mfrow = c(1, 2))
+
 hist((ttm$avg_time), xlab = 'Original Travel Time', main = '',
      xlim = c(0, 25), ylim = c(0, 120000))
 
@@ -144,7 +148,8 @@ This will be important to prevent skew amplification in the score computation.
 
 ```{r}
 # correct the skew in addition to edges close to zero
-temp <- log(ttm$sd_time) + 1 # +1 just prevents zero values
+
+temp <- log(ttm$sd_time + 1) # +1 just prevents zero values
 plot(density(temp), main = 'Log+1 Standard Deviation Density', xlim = c(0,4))
 
 # set sd_unique_time to be the Log+1 corrected values
@@ -176,6 +181,7 @@ ttm_wts$weight[is.na(ttm_wts$weight)] <- 1
 
 head(ttm_wts)
 
+
 ```
 
 ## Sum Scoring Method
@@ -183,6 +189,10 @@ head(ttm_wts)
 ```{r message=FALSE, warning=FALSE}
 
 # scores with [1 - 100] df normalization 
+
+
+na.omit(ttm_wts)->ttm_wts
+
 
 ttm_scores <- sum_score_fxn(ttm_wts,
                             weight = FALSE,
@@ -194,11 +204,25 @@ ttm_wtd_scores <- sum_score_fxn(ttm_wts,
                             log_normalize_score = TRUE,
                             normalize_df = TRUE, x = 1, y = 100)
 ```
+## Sum Scoring Method 2 with mean plus sd
+
+```{R}
+ttm_scores_2 <- sum_score_fxn_2(ttm_wts,
+                            weight = FALSE,
+                            log_normalize_score = TRUE,
+                            normalize_df = TRUE, x = 1, y = 100)
+
+ttm_wtd_scores_2 <- sum_score_fxn_2(ttm_wts,
+                            weight = TRUE,
+                            log_normalize_score = TRUE,
+                            normalize_df = TRUE, x = 1, y = 100)
+
+```
 
 ```{r}
-
+par(mfrow=c(1,4))
 plot_densities(ttm_scores, ttm_wtd_scores, 'Unweighted Scores', 'Weighted Scores')
-
+plot_densities(ttm_scores_2, ttm_wtd_scores_2, 'Unweighted Scores with 1/(Mean + 2*Sd)', 'Weighted Scores with 1/(Mean+2*Sd)')
 
 ```
 
@@ -270,6 +294,30 @@ plot_densities(n3_ttm_score, n3_wt_ttm_score, 'Unweighted Scores', 'Weighted Sco
 
 ```
 
+### using score function of 1/(mean+2sd)
+
+
+```{r}
+# scores by nearest amenities
+
+n1_ttm_score_2 <- sum_score_fxn_2(nearest_1_ttm, weight = FALSE, log_normalize_score = TRUE, normalize_df = TRUE, x = 1, y = 100)
+n1_wt_ttm_score_2 <- sum_score_fxn_2(nearest_1_ttm, weight = TRUE, log_normalize_score = TRUE, normalize_df = TRUE, x = 1, y = 100)
+
+n2_ttm_score_2 <- sum_score_fxn_2(nearest_2_ttm, weight = FALSE, log_normalize_score = TRUE, normalize_df = TRUE, x = 1, y = 100)
+n2_wt_ttm_score_2 <- sum_score_fxn_2(nearest_2_ttm, weight = TRUE, log_normalize_score = TRUE, normalize_df = TRUE, x = 1, y = 100)
+
+n3_ttm_score_2 <- sum_score_fxn_2(nearest_3_ttm, weight = FALSE, log_normalize_score = TRUE, normalize_df = TRUE, x = 1, y = 100)
+n3_wt_ttm_score_2 <- sum_score_fxn(nearest_3_ttm, weight = TRUE, log_normalize_score = TRUE, normalize_df = TRUE, x = 1, y = 100)
+
+```
+
+
+```{r}
+plot_densities(n1_ttm_score_2, n1_wt_ttm_score_2, 'Unweighted Scores with 1/(Mean + 2*Sd)', 'Weighted Scores with 1/(Mean+2*Sd)')
+plot_densities(n2_ttm_score_2, n2_wt_ttm_score_2, 'Unweighted Scores with 1/(Mean + 2*Sd)', 'Weighted Scores with 1/(Mean+2*Sd)')
+plot_densities(n3_ttm_score_2, n3_wt_ttm_score_2, 'Unweighted Scores with 1/(Mean + 2*Sd)', 'Weighted Scores with 1/(Mean+2*Sd)')
+
+```
 
 ## Exporting all Score Sets
 
