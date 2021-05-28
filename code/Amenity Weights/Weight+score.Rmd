@@ -32,6 +32,7 @@ ttm_poi<-inner_join(ttm,index,by=c("toId"="id"))
 ttm_poi
 ```
 
+###  old method before the meeting
 
 ```{R}
 # avg travel time to all accessible destinations
@@ -44,8 +45,21 @@ ttm_all_dest <- ttm_poi %>%
                   n_accessible_poi_unweighted=n())
                 
 
-ttm_all_dest
+
+
 ```
+
+
+
+
+
+
+
+
+
+
+
+
 
 #### compute score
 
@@ -76,16 +90,30 @@ write.csv(score_long,'/Users/yuxuancui/Desktop/MDS/data599/Amenity_index/long_sc
 ```
 
 
-```{R}
-unique(score_long$type[which(score_long$Scoring_Scheme=="score_unweighted")])
-score_long
+## New method score for indivudal id 
 
+```{R}
+
+### 
+
+ttm_poi %>%mutate(score_weighted=Index/(avg_unique_time+2*sd_unique_time), score_unweighted=1/(avg_unique_time+2*sd_unique_time))->ttm_all
+ttm_all
+ttm_all%>%group_by(fromId,type) %>% summarise(score_weighted_all=sum(score_weighted),score_unweighted_all=sum(score_unweighted))->ttm_type
+
+ttm_type%>%filter(type=="museum")->ttm_museum
+ttm_type%>%filter(type=="library or archives")->ttm_library
 ```
 
 
-```{r}
+```{R}
+
 par(mfrow = c(2, 3))
-plot(density(ttm_all_dest$avg_time_to_allpoi))
-plot(density(ttm_all_dest$avg_sd_time_to_uniquepoi))
-plot(density(ttm_all_dest$n_accessible_poi))
+  normalize <- function(x) {
+return ((x - min(x)) / (max(x) - min(x)))
+  }
+
+plot(density(ttm_museum$score_unweighted_all))
+plot(density(ttm_museum$score_weighted_all))
+
+
 ```
