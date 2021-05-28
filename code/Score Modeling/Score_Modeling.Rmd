@@ -11,16 +11,6 @@ output:
 
 The purpose of this notebook is to use the raw travel time data to experiment with different methods of aggregation and score modeling.
 
-Scoring models incorporated:
-
-| Name | Function | Notes | Assumptions |
-|---|---|---|---|
-|Unweighted Naive | number of accessible points / (mean transit time * mean standard deviation in transit time)  | Mean transit time to all accessible destinations  | Assumes that accessibility is defined by access to all amenities |
-|Weighted Naive | popularity weighted accessible points / (mean transit time * mean standard deviation in transit time)  | Mean transit time to all accessible destinations  | Assumes that accessibility is defined by access to all amenities and that amenity popularity defines significance of an accessible amenity |
-|Unweighted Sum | 1 / (nearest amenity transit time + standard deviation in nearest transit time)  | Only considers the nearest 1 to 3 amenities of a certain category. Sum is used to prevent skewing of data (difference(1/(0.01\*0.01) and 1/(6\*6)) >>> difference(1/(0.01+0.01) and 1/(6+6))) | Assumes accessibility only defined by access to the nearest amenity type  |
-| Joseph Unweighted Sum | sum(1 / (normalized_transit_time_i*normalized_sd_time_i)) | Sums the transit times as opposed to taking the mean, then normalizes the scores. |
-
-
 ## Import libraries
 ```{r message=FALSE, warning=FALSE}
 library(tidyverse)
@@ -42,15 +32,9 @@ source('Score_Functions.R')
 # normalize_vec(vec, x=0.01, y=0.99, log = FALSE)
 # normalize_df(df, x = 0.01, y = 0.99, log = FALSE)
 
-
-# naive score function : accessible_points / (mean * std)
-# naive_score(fromIds, mean_time, mean_sd_time, n_accessible, x=0.01, y=0.99, log = FALSE)
-
 # sum score function : SUM [i..n] (1 / (traveltime_i * std_traveltime_i) + ... ))
 # sum_score_fxn(df, weight = FALSE, log_normalize_score = TRUE, normalize_df = FALSE, x=1, y=10)
 
-# simplest score function : SUM [i..n] (1 / mean_time
-# simple_sum_score_fxn(df, weight = FALSE, log_normalize_score = TRUE, normalize_df = FALSE, x=0.01, y=0.99)
 ```
 
 ```{r}
@@ -340,6 +324,14 @@ write.csv(long_scores, '../../data/score_sets/long_scores.csv', row.names = FALS
 
 
 
+# Old Notes ~ Ignore or reuse later
+
+| Name | Function | Notes | Assumptions |
+|---|---|---|---|
+|Unweighted Naive | number of accessible points / (mean transit time * mean standard deviation in transit time)  | Mean transit time to all accessible destinations  | Assumes that accessibility is defined by access to all amenities |
+|Weighted Naive | popularity weighted accessible points / (mean transit time * mean standard deviation in transit time)  | Mean transit time to all accessible destinations  | Assumes that accessibility is defined by access to all amenities and that amenity popularity defines significance of an accessible amenity |
+|Unweighted Sum | 1 / (nearest amenity transit time + standard deviation in nearest transit time)  | Only considers the nearest 1 to 3 amenities of a certain category. Sum is used to prevent skewing of data (difference(1/(0.01\*0.01) and 1/(6\*6)) >>> difference(1/(0.01+0.01) and 1/(6+6))) | Assumes accessibility only defined by access to the nearest amenity type  |
+| Joseph Unweighted Sum | sum(1 / (normalized_transit_time_i*normalized_sd_time_i)) | Sums the transit times as opposed to taking the mean, then normalizes the scores. |
 
 
 

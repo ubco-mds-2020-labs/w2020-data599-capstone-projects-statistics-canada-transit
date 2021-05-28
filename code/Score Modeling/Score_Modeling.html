@@ -1626,49 +1626,6 @@ pre code {
 <div id="purpose" class="section level1">
 <h1>Purpose</h1>
 <p>The purpose of this notebook is to use the raw travel time data to experiment with different methods of aggregation and score modeling.</p>
-<p>Scoring models incorporated:</p>
-<table>
-<colgroup>
-<col width="25%"></col>
-<col width="25%"></col>
-<col width="25%"></col>
-<col width="25%"></col>
-</colgroup>
-<thead>
-<tr class="header">
-<th>Name</th>
-<th>Function</th>
-<th>Notes</th>
-<th>Assumptions</th>
-</tr>
-</thead>
-<tbody>
-<tr class="odd">
-<td>Unweighted Naive</td>
-<td>number of accessible points / (mean transit time * mean standard deviation in transit time)</td>
-<td>Mean transit time to all accessible destinations</td>
-<td>Assumes that accessibility is defined by access to all amenities</td>
-</tr>
-<tr class="even">
-<td>Weighted Naive</td>
-<td>popularity weighted accessible points / (mean transit time * mean standard deviation in transit time)</td>
-<td>Mean transit time to all accessible destinations</td>
-<td>Assumes that accessibility is defined by access to all amenities and that amenity popularity defines significance of an accessible amenity</td>
-</tr>
-<tr class="odd">
-<td>Unweighted Sum</td>
-<td>1 / (nearest amenity transit time + standard deviation in nearest transit time)</td>
-<td>Only considers the nearest 1 to 3 amenities of a certain category. Sum is used to prevent skewing of data (difference(1/(0.01*0.01) and 1/(6*6)) &gt;&gt;&gt; difference(1/(0.01+0.01) and 1/(6+6)))</td>
-<td>Assumes accessibility only defined by access to the nearest amenity type</td>
-</tr>
-<tr class="even">
-<td>Joseph Unweighted Sum</td>
-<td>sum(1 / (normalized_transit_time_i*normalized_sd_time_i))</td>
-<td>Sums the transit times as opposed to taking the mean, then normalizes the scores.</td>
-<td></td>
-</tr>
-</tbody>
-</table>
 <div id="import-libraries" class="section level2">
 <h2>Import libraries</h2>
 <pre class="r"><code>library(tidyverse)
@@ -1687,15 +1644,8 @@ knit_print.summary &lt;- lemon_print</code></pre>
 # normalize_vec(vec, x=0.01, y=0.99, log = FALSE)
 # normalize_df(df, x = 0.01, y = 0.99, log = FALSE)
 
-
-# naive score function : accessible_points / (mean * std)
-# naive_score(fromIds, mean_time, mean_sd_time, n_accessible, x=0.01, y=0.99, log = FALSE)
-
 # sum score function : SUM [i..n] (1 / (traveltime_i * std_traveltime_i) + ... ))
-# sum_score_fxn(df, weight = FALSE, log_normalize_score = TRUE, normalize_df = FALSE, x=1, y=10)
-
-# simplest score function : SUM [i..n] (1 / mean_time
-# simple_sum_score_fxn(df, weight = FALSE, log_normalize_score = TRUE, normalize_df = FALSE, x=0.01, y=0.99)</code></pre>
+# sum_score_fxn(df, weight = FALSE, log_normalize_score = TRUE, normalize_df = FALSE, x=1, y=10)</code></pre>
 <pre class="r"><code># function to plot score distributions by type
 plot_densities &lt;- function(score_frame1, score_frame2, titl1, titl2) {
   x &lt;- score_frame1 %&gt;%
@@ -1751,7 +1701,7 @@ amenities &lt;- read.csv(&#39;../../data/clean/vancouver_facilities_2.csv&#39;) 
 sample_n(amenities, 3)</code></pre>
 <div data-pagedtable="false">
 <script data-pagedtable-source type="application/json">
-{"columns":[{"label":["id"],"name":[1],"type":["int"],"align":["right"]},{"label":["lat"],"name":[2],"type":["chr"],"align":["left"]},{"label":["lon"],"name":[3],"type":["chr"],"align":["left"]},{"label":["type"],"name":[4],"type":["chr"],"align":["left"]},{"label":["name"],"name":[5],"type":["chr"],"align":["left"]},{"label":["city"],"name":[6],"type":["chr"],"align":["left"]},{"label":["city_id"],"name":[7],"type":["int"],"align":["right"]}],"data":[{"1":"6885","2":"49.2078392","3":"-122.9063479","4":"museum","5":"New Westminster Museum & Archives","6":"New Westminster","7":"5915029"},{"1":"5967","2":"49.264079","3":"-123.1386272","4":"gallery","5":"Marion Scott Gallery","6":"Vancouver","7":"5915022"},{"1":"8613","2":"49.125177","3":"-123.178441","4":"library or archives","5":"Steveston Branch","6":"Richmond","7":"5915015"}],"options":{"columns":{"min":{},"max":[10]},"rows":{"min":[10],"max":[10]},"pages":{}}}
+{"columns":[{"label":["id"],"name":[1],"type":["int"],"align":["right"]},{"label":["lat"],"name":[2],"type":["chr"],"align":["left"]},{"label":["lon"],"name":[3],"type":["chr"],"align":["left"]},{"label":["type"],"name":[4],"type":["chr"],"align":["left"]},{"label":["name"],"name":[5],"type":["chr"],"align":["left"]},{"label":["city"],"name":[6],"type":["chr"],"align":["left"]},{"label":["city_id"],"name":[7],"type":["int"],"align":["right"]}],"data":[{"1":"2244","2":"49.317592","3":"-123.0210051","4":"library or archives","5":"Capilano University Archives","6":"North Vancouver","7":"5915046"},{"1":"8653","2":"49.280215","3":"-123.091958","4":"library or archives","5":"Strathcona Branch","6":"Vancouver","7":"5915022"},{"1":"268","2":"49.20354979","3":"-122.9128583","4":"gallery","5":"Amelia Douglas Gallery","6":"New Westminster","7":"5915029"}],"options":{"columns":{"min":{},"max":[10]},"rows":{"min":[10],"max":[10]},"pages":{}}}
   </script>
 </div>
 <pre class="r"><code># clean
@@ -1763,7 +1713,7 @@ amenities$type &lt;- as.factor(amenities$type) # convert to factor
 sample_n(amenities, 3)</code></pre>
 <div data-pagedtable="false">
 <script data-pagedtable-source type="application/json">
-{"columns":[{"label":["id"],"name":[1],"type":["fct"],"align":["left"]},{"label":["type"],"name":[2],"type":["fct"],"align":["left"]}],"data":[{"1":"9482","2":"library or archives"},{"1":"6831","2":"library or archives"},{"1":"489","2":"theatre/performance and concert hall"}],"options":{"columns":{"min":{},"max":[10]},"rows":{"min":[10],"max":[10]},"pages":{}}}
+{"columns":[{"label":["id"],"name":[1],"type":["fct"],"align":["left"]},{"label":["type"],"name":[2],"type":["fct"],"align":["left"]}],"data":[{"1":"5792","2":"library or archives"},{"1":"4968","2":"gallery"},{"1":"2169","2":"museum"}],"options":{"columns":{"min":{},"max":[10]},"rows":{"min":[10],"max":[10]},"pages":{}}}
   </script>
 </div>
 <pre class="r"><code># view summary
@@ -1808,7 +1758,7 @@ summary(ttm[,3:4])</code></pre>
 <pre class="r"><code>sample_n(ttm, 5)</code></pre>
 <div data-pagedtable="false">
 <script data-pagedtable-source type="application/json">
-{"columns":[{"label":["fromId"],"name":[1],"type":["fct"],"align":["left"]},{"label":["toId"],"name":[2],"type":["fct"],"align":["left"]},{"label":["avg_time"],"name":[3],"type":["dbl"],"align":["right"]},{"label":["sd_time"],"name":[4],"type":["dbl"],"align":["right"]},{"label":["type"],"name":[5],"type":["fct"],"align":["left"]}],"data":[{"1":"59153687001","2":"4198","3":"26.79487","4":"1.559006","5":"gallery"},{"1":"59150367001","2":"9336","3":"40.15385","4":"1.000000","5":"theatre/performance and concert hall"},{"1":"59150522006","2":"5942","3":"113.00000","4":"2.718954","5":"museum"},{"1":"59152934008","2":"394","3":"50.66667","4":"1.344254","5":"museum"},{"1":"59153382002","2":"8444","3":"66.69231","4":"1.379432","5":"gallery"}],"options":{"columns":{"min":{},"max":[10]},"rows":{"min":[10],"max":[10]},"pages":{}}}
+{"columns":[{"label":["fromId"],"name":[1],"type":["fct"],"align":["left"]},{"label":["toId"],"name":[2],"type":["fct"],"align":["left"]},{"label":["avg_time"],"name":[3],"type":["dbl"],"align":["right"]},{"label":["sd_time"],"name":[4],"type":["dbl"],"align":["right"]},{"label":["type"],"name":[5],"type":["fct"],"align":["left"]}],"data":[{"1":"59153994001","2":"6383","3":"112.36840","4":"2.259168","5":"library or archives"},{"1":"59153997004","2":"8777","3":"16.00000","4":"1.000000","5":"gallery"},{"1":"59150097002","2":"8809","3":"116.28571","4":"3.903600","5":"library or archives"},{"1":"59151554002","2":"5139","3":"90.84615","4":"5.309071","5":"library or archives"},{"1":"59150132004","2":"5967","3":"80.97436","4":"7.568936","5":"gallery"}],"options":{"columns":{"min":{},"max":[10]},"rows":{"min":[10],"max":[10]},"pages":{}}}
   </script>
 </div>
 <pre class="r"><code>par(mfrow = c(1,2))
@@ -1982,6 +1932,51 @@ long_scores &lt;- long_scores[, c(1, 2, 4, 5, 3)]
 ## Export
 write.csv(long_scores, &#39;../../data/score_sets/long_scores.csv&#39;, row.names = FALSE)</code></pre>
 </div>
+</div>
+<div id="old-notes-ignore-or-reuse-later" class="section level1">
+<h1>Old Notes ~ Ignore or reuse later</h1>
+<table>
+<colgroup>
+<col width="25%"></col>
+<col width="25%"></col>
+<col width="25%"></col>
+<col width="25%"></col>
+</colgroup>
+<thead>
+<tr class="header">
+<th>Name</th>
+<th>Function</th>
+<th>Notes</th>
+<th>Assumptions</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td>Unweighted Naive</td>
+<td>number of accessible points / (mean transit time * mean standard deviation in transit time)</td>
+<td>Mean transit time to all accessible destinations</td>
+<td>Assumes that accessibility is defined by access to all amenities</td>
+</tr>
+<tr class="even">
+<td>Weighted Naive</td>
+<td>popularity weighted accessible points / (mean transit time * mean standard deviation in transit time)</td>
+<td>Mean transit time to all accessible destinations</td>
+<td>Assumes that accessibility is defined by access to all amenities and that amenity popularity defines significance of an accessible amenity</td>
+</tr>
+<tr class="odd">
+<td>Unweighted Sum</td>
+<td>1 / (nearest amenity transit time + standard deviation in nearest transit time)</td>
+<td>Only considers the nearest 1 to 3 amenities of a certain category. Sum is used to prevent skewing of data (difference(1/(0.01*0.01) and 1/(6*6)) &gt;&gt;&gt; difference(1/(0.01+0.01) and 1/(6+6)))</td>
+<td>Assumes accessibility only defined by access to the nearest amenity type</td>
+</tr>
+<tr class="even">
+<td>Joseph Unweighted Sum</td>
+<td>sum(1 / (normalized_transit_time_i*normalized_sd_time_i))</td>
+<td>Sums the transit times as opposed to taking the mean, then normalizes the scores.</td>
+<td></td>
+</tr>
+</tbody>
+</table>
 </div>
 
 

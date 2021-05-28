@@ -30,27 +30,6 @@ normalize_df <- function(df, x = 0.01, y = 0.99, log = FALSE) {
 ## SCORING FUNCTIONS
 ##############################
 
-# naive score function : accessible_points / (mean * std)
-
-naive_score <- function(fromIds, mean_time, mean_sd_time, n_accessible, x=0.01, y=0.99, log = FALSE) {
-  
-  # normalize vectors prior to score computation
-  mean_time <- normalize_vec(mean_time)
-  mean_sd_time <- normalize_vec(mean_sd_time)
-  n_accessible <- normalize_vec(n_accessible)
-  
-  # score
-  score <- n_accessible / (mean_time*mean_sd_time)
-  
-  # normalize score with custom parameters
-  norm_score <- normalize_vec(score, x = x, y = y, log = log)
-  
-  df <- data.frame('fromId' = as.factor(fromIds), 'score' =  norm_score)
-  #df <- df[order(df$norm_score, decreasing=TRUE, na.last=FALSE), ] # order doesn't matter
-  df
-}
-
-
 # sum score function : SUM [i..n] (1 / (traveltime_i * std_traveltime_i) + ... ))
 
 sum_score_fxn <- function(df, weight = FALSE, log_normalize_score = TRUE, normalize_df = FALSE, x=1, y=10) {
@@ -88,64 +67,23 @@ sum_score_fxn <- function(df, weight = FALSE, log_normalize_score = TRUE, normal
   df
 }
 
-# simplest score function : SUM [i..n] (1 / mean_time
+# OLD AND NO LONGER USED TO COMPUTE SCORES 
+# naive score function : accessible_points / (mean * std)
 
-simple_sum_score_fxn <- function(df, weight = FALSE, log_normalize_score = TRUE, normalize_df = FALSE, x=0.01, y=0.99) {
+naive_score <- function(fromIds, mean_time, mean_sd_time, n_accessible, x=0.01, y=0.99, log = FALSE) {
   
-  if (normalize_df == TRUE) {
-    # 0.01 - 0.99 vector normalization prior to score computation
-    # log is false since we don't care about correcting skew at this point
-    df <- normalize_df(df, x = x, y = y, log = FALSE)
-  }
-
-  if (weight == FALSE) {
-    df <- df %>% 
-      group_by(fromId, toId) %>%
-      summarise(unique_score = 1/(avg_time)) %>% 
-      group_by(fromId) %>%
-      summarise(score = sum(unique_score))
-    
-  } else {
-    df <- df %>% 
-      group_by(fromId, toId) %>%
-      summarise(unique_score = weight/(avg_time)) %>% 
-      group_by(fromId) %>%
-      summarise(score = sum(unique_score))
-  }
-  # normalize the score
-  # by default it will log normalize the score
-  df$score <- normalize_vec(df$score, x = 0.01, y = 0.99, log = log_normalize_score)
+  # normalize vectors prior to score computation
+  mean_time <- normalize_vec(mean_time)
+  mean_sd_time <- normalize_vec(mean_sd_time)
+  n_accessible <- normalize_vec(n_accessible)
   
-  df
-}
-
-
-# sum score function for pre filtered nearest n dataframes: SUM [i..n] (1 / (traveltime_i * std_traveltime_i) + ... ))
-
-nearest_sum_score_fxn <- function(df, weight = FALSE, log_normalize_score = TRUE, normalize_df = FALSE, x=1, y=10) {
+  # score
+  score <- n_accessible / (mean_time*mean_sd_time)
   
-  if (normalize_df == TRUE) {
-    # 0.01 - 0.99 vector normalization prior to score computation
-    # log is false since we don't care about correcting skew at this point
-    df <- normalize_df(df, x = x, y = y, log = FALSE)
-  }
+  # normalize score with custom parameters
+  norm_score <- normalize_vec(score, x = x, y = y, log = log)
   
-  if (weight == FALSE) {
-    df <- df %>% 
-      mutate(unique_score = 1/(avg_time*sd_time)) %>% 
-      group_by(fromId) %>%
-      summarise(score = sum(unique_score))
-    
-  } else {
-    df <- df %>% 
-      mutate(unique_score = weight/(avg_time*sd_time))
-      group_by(fromId) %>%
-      summarise(score = sum(unique_score))
-  }
-  
-  # normalize the score
-  # by default it will log normalize the score
-  df$score <- normalize_vec(df$score, x = 0.01, y = 0.99, log = log_normalize_score)
-  
+  df <- data.frame('fromId' = as.factor(fromIds), 'score' =  norm_score)
+  #df <- df[order(df$norm_score, decreasing=TRUE, na.last=FALSE), ] # order doesn't matter
   df
 }
