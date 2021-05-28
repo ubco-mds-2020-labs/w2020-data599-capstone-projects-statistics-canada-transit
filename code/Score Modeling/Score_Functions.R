@@ -45,8 +45,7 @@ sum_score_fxn <- function(df, weight = FALSE, log_normalize_score = TRUE, normal
   
   ## sum scores and normalize (OPTION 1)
   df <- df %>% 
-      group_by(fromId, type) %>% 
-      summarise(score = sum(unique_score)) %>%
+      mutate(score = sum(unique_score)) %>%
       group_by(type) %>%
       mutate(score = normalize_vec(score, x = 0.01, y = 0.99, log = log_normalize_score))
   
