@@ -1,0 +1,20 @@
+---
+title: "R Notebook"
+output: html_notebook
+---
+
+
+#######Shapefiles
+
+```{r}
+library(dplyr)
+library(sf)
+canDB <- st_read("../Visualizations/census2016_DBS_shp/ldb_000b16a_e.shp", stringsAsFactors = FALSE)
+                 #ldb_000b16a_e/ldb_000b16a_e.shp")
+DB_Van_CMA <- canDB %>% filter(CMANAME == "Vancouver")
+st_write(DB_Van_CMA,"../Visualizations/census2016_DBS_shp/DB_Van_CMA", driver = "ESRI Shapefile")
+```
+
+
+
+
