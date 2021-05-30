@@ -1,10 +1,10 @@
 ---
 title: "Score Computation Notebook"
 output:
-  pdf_document: default
-  html_notebook: default
   html_document:
     df_print: paged
+  html_notebook: default
+  pdf_document: default
 ---
 
 # Purpose
@@ -26,14 +26,27 @@ knit_print.summary <- lemon_print
 ```
 
 ## Import Scoring Functions
+
+Note that the second scoring function is a much more realistic way of computing the worst case accessibility score. This is because we add 2* standard deviation in travel time to the average travel time as a way of getting a worst case travel time. The first method multiplies travel time with standard deviation which doesn't exactly make sense since both those variables don't have the same weight.
+
+**The score output from this script will thus be the product of the second scoring function below**.
+
 ```{r}
 source('Score_Functions.R')
 
+# sum score function 1 : SUM [i..n] (1 / (traveltime_i * std_traveltime_i) + ... ))
+# travel time and sd have equal weight (bad assumption) // don't use this method
+
+# sum score function 2 : SUM [i..n] (1 / (traveltime_i + 2*std_traveltime_i) + ... ))
+# travel time has more weight than sd, 2*sd is added as worst case scenario
+
+
+# parameters for both:
+# score_fxn(df, weight = FALSE, log_normalize_score = FALSE, normalize_df = FALSE, x=1, y=10)
+
+# norm functions
 # normalize_vec(vec, x=0.01, y=0.99, log = FALSE)
 # normalize_df(df, x = 0.01, y = 0.99, log = FALSE)
-
-# sum score function : SUM [i..n] (1 / (traveltime_i * std_traveltime_i) + ... ))
-# sum_score_fxn(df, weight = FALSE, log_normalize_score = TRUE, normalize_df = FALSE, x=1, y=10)
 
 ```
 
@@ -118,7 +131,7 @@ names(ttm)[names(ttm) == 'sd_unique_time'] <- "sd_time"
 summary(ttm[,3:4])
 sample_n(ttm, 5)
 
-par(mfrow = c(1,2))
+par(mfrow = c(2,1))
 plot(density(ttm[,3]), main = 'Travel Time (Density)')
 plot(density(ttm[,4]), main = 'Std Dev of Travel Time (Density)')
 ```
@@ -142,18 +155,28 @@ hist(min_5min, xlab = 'Original Travel Time', main = '',
 ttm$avg_time <- min_5min
 ```
 
-**Correct skew in standard deviation**
+**Correct Outliers in Standard Deviation**
 
 This will be important to prevent skew amplification in the score computation.
 
-```{r}
-# correct the skew in addition to edges close to zero
+We can use a log to correct the skew however this will make the values incomparable to the travel time. As such we'll just clip values on the extreme by setting them to a max of 10 minutes. Notice the distributions in both cases is the same.
 
-temp <- log(ttm$sd_time + 1) # +1 just prevents zero values
-plot(density(temp), main = 'Log+1 Standard Deviation Density', xlim = c(0,4))
+```{r}
+par(mfrow = c(2, 1))
+
+# correct standard deviations beyond 10 minutes
+# taking the log will make the sd somewhat incomparable to the travel time
+temp1 <- ttm$sd_time
+temp1[temp1 > 10] <- 10
+plot(density(temp1), main = 'Clipped Std Dev Density', xlim = c(0,11))
+
+# using log + 1 to prevent values from being too close to zero
+temp2 <- log(ttm$sd_time) +1  
+plot(density(temp2), main = 'Log+1 Std Dev Density', xlim = c(0,11))
+
 
 # set sd_unique_time to be the Log+1 corrected values
-ttm$sd_time <- temp
+ttm$sd_time <- temp1
 
 ```
 
@@ -162,7 +185,7 @@ ttm$sd_time <- temp
 ```{r kable.opts=list(caption='Summary Table')}
 
 # Import weight
-dest_wts <- read.csv('../../data/amenity_score/poi_index.csv')
+dest_wts <- read.csv('../../data/amenity_weight/poi_index.csv')
 
 # clean
 dest_wts <- dest_wts[, c(6,7)] # keep weight, id
@@ -184,47 +207,85 @@ head(ttm_wts)
 
 ```
 
-## Sum Scoring Method
+
+## Sum Scoring Method = 1/(mean+2sd)
+
+Notes: 
+- We don't scale the data before score computation because we care about the scale of time and standard deviation. We should use their values as is, otherwise scaling will give them equal weighing again when this is a bad assumption.
+- Log normalizing the score isn't important as the relative distribution in values stays the same, so score visualizations will be identical. The only difference is the final values will be more or less skewed.
+
+
+```{r}
+# Score we care about
+ttm_scores <- sum_score_fxn_2(ttm_wts, weight = FALSE)
+ttm_wtd_scores <- sum_score_fxn_2(ttm_wts, weight = TRUE)
+
+plot_densities(ttm_scores, ttm_wtd_scores, 'Unweighted', 'Weighted')
+
+```
+
+*Experimental cell for comparing different score distributions with different normalization conditions*
 
 ```{r message=FALSE, warning=FALSE}
 
+## WITH score log normalization
+
+# scores without df normalization 
+ttm_scores_1 <- sum_score_fxn_2(ttm_wts, weight = FALSE, log_normalize_score = TRUE,
+                            normalize_df = FALSE)
+
+ttm_wtd_scores_1 <- sum_score_fxn_2(ttm_wts, weight = TRUE, log_normalize_score = TRUE,
+                            normalize_df = FALSE)
+
 # scores with [1 - 100] df normalization 
+ttm_scores_2 <- sum_score_fxn_2(ttm_wts, weight = FALSE, log_normalize_score = TRUE,
+                            normalize_df = TRUE, x = 1, y = 10)
+
+ttm_wtd_scores_2 <- sum_score_fxn_2(ttm_wts, weight = TRUE, log_normalize_score = TRUE,
+                            normalize_df = TRUE, x = 1, y = 10)
+
+# scores with [0 - 1] df normalization 
+ttm_scores_3 <- sum_score_fxn_2(ttm_wts, weight = FALSE, log_normalize_score = TRUE,
+                            normalize_df = TRUE, x = 0.01, y = 0.99)
+
+ttm_wtd_scores_3 <- sum_score_fxn_2(ttm_wts, weight = TRUE, log_normalize_score = TRUE,
+                            normalize_df = TRUE, x = 0.01, y = 0.99)
+
+plot_densities(ttm_scores_1, ttm_wtd_scores_1, 'Log Norm Score / Unweighted / No df Normalization', 'Log Norm Score / Weighted / No df Normalization')
+plot_densities(ttm_scores_2, ttm_wtd_scores_2, 'Log Norm Score / Unweighted / 1-10 df Normalization', 'Log Norm Score / 1-10 df Normalization')
+plot_densities(ttm_scores_3, ttm_wtd_scores_3, 'Log Norm Score / Unweighted / 0.01-0.99 df Normalization', 'Log Norm Score / Weighted / 0.01-0.99 df Normalization')
 
 
-na.omit(ttm_wts)->ttm_wts
 
+## WITHOUT score log normalization
 
-ttm_scores <- sum_score_fxn(ttm_wts,
-                            weight = FALSE,
-                            log_normalize_score = TRUE,
-                            normalize_df = TRUE, x = 1, y = 100)
+# scores without df normalization 
+ttm_scores_4 <- sum_score_fxn_2(ttm_wts, weight = FALSE, log_normalize_score = FALSE,
+                            normalize_df = FALSE)
 
-ttm_wtd_scores <- sum_score_fxn(ttm_wts,
-                            weight = TRUE,
-                            log_normalize_score = TRUE,
-                            normalize_df = TRUE, x = 1, y = 100)
+ttm_wtd_scores_4 <- sum_score_fxn_2(ttm_wts, weight = TRUE, log_normalize_score = FALSE,
+                            normalize_df = FALSE)
+
+# scores with [1 - 100] df normalization 
+ttm_scores_5 <- sum_score_fxn_2(ttm_wts, weight = FALSE, log_normalize_score = FALSE,
+                            normalize_df = TRUE, x = 1, y = 10)
+
+ttm_wtd_scores_5 <- sum_score_fxn_2(ttm_wts, weight = TRUE, log_normalize_score = FALSE,
+                            normalize_df = TRUE, x = 1, y = 10)
+
+# scores with [0 - 1] df normalization 
+ttm_scores_6 <- sum_score_fxn_2(ttm_wts, weight = FALSE, log_normalize_score = FALSE,
+                            normalize_df = TRUE, x = 0.01, y = 0.99)
+
+ttm_wtd_scores_6 <- sum_score_fxn_2(ttm_wts, weight = TRUE, log_normalize_score = FALSE,
+                            normalize_df = TRUE, x = 0.01, y = 0.99)
+
+plot_densities(ttm_scores_4, ttm_wtd_scores_4, 'Norm Score / Unweighted / No df Normalization', 'Norm Score / Weighted / No df Normalization')
+plot_densities(ttm_scores_5, ttm_wtd_scores_5, 'Norm Score / Unweighted / 1-10 df Normalization', 'Norm Score / 1-10 df Normalization')
+plot_densities(ttm_scores_6, ttm_wtd_scores_6, 'Norm Score / Unweighted / 0.01-0.99 df Normalization', 'Norm Score / Weighted / 0.01-0.99 df Normalization')
 ```
-## Sum Scoring Method 2 with mean plus sd
 
-```{R}
-ttm_scores_2 <- sum_score_fxn_2(ttm_wts,
-                            weight = FALSE,
-                            log_normalize_score = TRUE,
-                            normalize_df = TRUE, x = 1, y = 100)
 
-ttm_wtd_scores_2 <- sum_score_fxn_2(ttm_wts,
-                            weight = TRUE,
-                            log_normalize_score = TRUE,
-                            normalize_df = TRUE, x = 1, y = 100)
-
-```
-
-```{r}
-par(mfrow=c(1,4))
-plot_densities(ttm_scores, ttm_wtd_scores, 'Unweighted Scores', 'Weighted Scores')
-plot_densities(ttm_scores_2, ttm_wtd_scores_2, 'Unweighted Scores with 1/(Mean + 2*Sd)', 'Weighted Scores with 1/(Mean+2*Sd)')
-
-```
 
 
 ```{r}
@@ -246,8 +307,9 @@ plot_densities(ttm_scores2, ttm_wtd_scores2, 'Unweighted Scores', 'Weighted Scor
 ```
 
 
-
 ## Sum Scoring for the Nearest 1, 2, or 3 Amenities
+
+### Filtering only nearest 1, 2, 3 rows
 
 *Note that for nearest 1, the sum is the value itself.*
 
@@ -264,66 +326,44 @@ nearest_1_ttm <- ttm_wts %>%
 nearest_2_ttm <- ttm_wts %>%
                   group_by(fromId, type) %>%
                   summarise(avg_time = na.omit(sort(avg_time)[1:2]), 
-                            sd_time = sd_time[which(na.omit(avg_time == sort(avg_time)[1:2]))], 
-                            weight = weight[which(na.omit(avg_time == sort(avg_time)[1:2]))])
+                            sd_time = sd_time[which(avg_time == sort(avg_time)[1:2])], 
+                            weight = weight[which(avg_time == sort(avg_time)[1:2])])
 
 nearest_3_ttm <- ttm_wts %>%
                   group_by(fromId, type) %>%
                   summarise(avg_time = na.omit(sort(avg_time)[1:3]), 
-                            sd_time = sd_time[which(na.omit(avg_time == sort(avg_time)[1:3]))], 
-                            weight = weight[which(na.omit(avg_time == sort(avg_time)[1:3]))])
+                            sd_time = sd_time[which(avg_time == sort(avg_time)[1:3])], 
+                            weight = weight[which(avg_time == sort(avg_time)[1:3])])
+
+```
 
 
+### Scoring as done above with = 1/(mean+2sd)
+
+```{r message=FALSE, warning=FALSE}
 # scores by nearest amenities
 
-n1_ttm_score <- sum_score_fxn(nearest_1_ttm, weight = FALSE, log_normalize_score = TRUE, normalize_df = TRUE, x = 1, y = 100)
-n1_wt_ttm_score <- sum_score_fxn(nearest_1_ttm, weight = TRUE, log_normalize_score = TRUE, normalize_df = TRUE, x = 1, y = 100)
+n1_ttm_score <- sum_score_fxn_2(nearest_1_ttm, weight = FALSE)
+n1_wt_ttm_score <- sum_score_fxn_2(nearest_1_ttm, weight = TRUE)
 
-n2_ttm_score <- sum_score_fxn(nearest_2_ttm, weight = FALSE, log_normalize_score = TRUE, normalize_df = TRUE, x = 1, y = 100)
-n2_wt_ttm_score <- sum_score_fxn(nearest_2_ttm, weight = TRUE, log_normalize_score = TRUE, normalize_df = TRUE, x = 1, y = 100)
+n2_ttm_score <- sum_score_fxn_2(nearest_2_ttm, weight = FALSE)
+n2_wt_ttm_score <- sum_score_fxn_2(nearest_2_ttm, weight = TRUE)
 
-n3_ttm_score <- sum_score_fxn(nearest_3_ttm, weight = FALSE, log_normalize_score = TRUE, normalize_df = TRUE, x = 1, y = 100)
-n3_wt_ttm_score <- sum_score_fxn(nearest_3_ttm, weight = TRUE, log_normalize_score = TRUE, normalize_df = TRUE, x = 1, y = 100)
+n3_ttm_score <- sum_score_fxn_2(nearest_3_ttm, weight = FALSE)
+n3_wt_ttm_score <- sum_score_fxn_2(nearest_3_ttm, weight = TRUE)
 
+
+plot_densities(n1_ttm_score, n1_wt_ttm_score, 'N1 Unweighted Scores', 'N1 Weighted Scores')
+plot_densities(n2_ttm_score, n2_wt_ttm_score, 'N2 Unweighted Scores', 'N2 Weighted Scores')
+plot_densities(n3_ttm_score, n3_wt_ttm_score, 'N3 Unweighted Scores', 'N3 Weighted Scores')
 ```
 
-```{r}
-plot_densities(n1_ttm_score, n1_wt_ttm_score, 'Unweighted Scores', 'Weighted Scores')
-plot_densities(n2_ttm_score, n2_wt_ttm_score, 'Unweighted Scores', 'Weighted Scores')
-plot_densities(n3_ttm_score, n3_wt_ttm_score, 'Unweighted Scores', 'Weighted Scores')
-
-```
-
-### using score function of 1/(mean+2sd)
-
-
-```{r}
-# scores by nearest amenities
-
-n1_ttm_score_2 <- sum_score_fxn_2(nearest_1_ttm, weight = FALSE, log_normalize_score = TRUE, normalize_df = TRUE, x = 1, y = 100)
-n1_wt_ttm_score_2 <- sum_score_fxn_2(nearest_1_ttm, weight = TRUE, log_normalize_score = TRUE, normalize_df = TRUE, x = 1, y = 100)
-
-n2_ttm_score_2 <- sum_score_fxn_2(nearest_2_ttm, weight = FALSE, log_normalize_score = TRUE, normalize_df = TRUE, x = 1, y = 100)
-n2_wt_ttm_score_2 <- sum_score_fxn_2(nearest_2_ttm, weight = TRUE, log_normalize_score = TRUE, normalize_df = TRUE, x = 1, y = 100)
-
-n3_ttm_score_2 <- sum_score_fxn_2(nearest_3_ttm, weight = FALSE, log_normalize_score = TRUE, normalize_df = TRUE, x = 1, y = 100)
-n3_wt_ttm_score_2 <- sum_score_fxn(nearest_3_ttm, weight = TRUE, log_normalize_score = TRUE, normalize_df = TRUE, x = 1, y = 100)
-
-```
-
-
-```{r}
-plot_densities(n1_ttm_score_2, n1_wt_ttm_score_2, 'Unweighted Scores with 1/(Mean + 2*Sd)', 'Weighted Scores with 1/(Mean+2*Sd)')
-plot_densities(n2_ttm_score_2, n2_wt_ttm_score_2, 'Unweighted Scores with 1/(Mean + 2*Sd)', 'Weighted Scores with 1/(Mean+2*Sd)')
-plot_densities(n3_ttm_score_2, n3_wt_ttm_score_2, 'Unweighted Scores with 1/(Mean + 2*Sd)', 'Weighted Scores with 1/(Mean+2*Sd)')
-
-```
 
 ## Exporting all Score Sets
 
 ```{r}
 
-## Add weight column for each score frame
+## Add a weight status column for each score frame
 
 ttm_scores$weight <- as.factor('no')
 ttm_wtd_scores$weight <- as.factor('yes')
@@ -336,6 +376,7 @@ n2_wt_ttm_score$weight <- as.factor('yes')
 
 n3_ttm_score$weight <- as.factor('no')
 n3_wt_ttm_score$weight <- as.factor('yes')
+
 
 ## Add nearest_n column for each score frame
 
@@ -351,6 +392,7 @@ n2_wt_ttm_score$nearest_n <- as.factor('2')
 n3_ttm_score$nearest_n <- as.factor('3')
 n3_wt_ttm_score$nearest_n <- as.factor('3')
 
+
 ## Combine into a long dataframe
 all_scores <- list(ttm_scores, ttm_wtd_scores,
                    n1_ttm_score, n1_wt_ttm_score,
@@ -359,15 +401,83 @@ all_scores <- list(ttm_scores, ttm_wtd_scores,
 
 long_scores <- data.table::rbindlist(all_scores) %>% arrange(fromId)
 
+
 ## Re-Order columns
 long_scores <- long_scores[, c(1, 2, 4, 5, 3)]
 
-## Export
-write.csv(long_scores, '../../data/score_sets/long_scores.csv', row.names = FALSE)
+
+## Add Block Population Data
+
+db_info <- read.csv('../../data/clean/vancouver_db.csv')[1:2]
+# convert to factor
+db_info$id <- as.factor(db_info$id)
+# remove commas in character numeric column
+db_info$pop <- str_replace_all(db_info$pop, ',', '')
+db_info$pop <- as.numeric(db_info$pop)
+
+long_scores <- left_join(long_scores, db_info, by = c('fromId'='id'))
 ```
 
+We're almost done. All zones would ideally have 32 different scores based on possible schemes.
+
+2 weight options * 4 amenity options * 4 nearest options = 32
+
+Many zones however don't have any routes, such as provincial parks which aren't linked to via transit. To visualize them in the data we need to attribute these cases an NA value. Since these rows are missing we'll use the following code to re-add those NA values.
+
+```{r}
+# check for the inconsistency in values
+counted <- long_scores %>% group_by(fromId) %>% summarize(n = n()) %>% arrange(n) 
+#plot(counted$n, type = 'l', xlim = c(0, 1000))
 
 
+unique_fromIds <- length(unique(long_scores$fromId))
+N <- unique_fromIds*32
+
+paste('Unique Blocks: ', unique_fromIds)
+paste(nrow(long_scores), 'of', N, 'rows filled =', round((nrow(long_scores) / N)*100, 2),'%')
+paste(N-nrow(long_scores), 'to fill.')
+```
+
+```{r}
+
+# count fromId occurences
+n_counts <- long_scores %>% group_by(fromId) %>% mutate(n = n())
+
+# array of IDs that don't meet the 32 requirement
+id_arr <- array(unique(n_counts[n_counts$n < 32, ]$fromId))
+
+# function for NA grid expansion 
+NA_grid_expander <- function(id, df) {
+  all_ams <- c('theatre/performance and concert hall', 'museum', 'library or archives', 'gallery')
+  # get missing amenities
+  missing_ams <- setdiff(all_ams, unique(df$type[df$fromId == id]))
+  # population
+  pop <- unique(df$pop[df$fromId == id])
+  # create NA rows to append via expand.grid
+  # (creates a row for every factor combination)
+  NA_rows <- expand.grid('fromId' = id,
+                     'type' = missing_ams,
+                     'weight' = c('yes', 'no'),
+                     'nearest_n' = c('all', '1', '2', '3'),
+                     'score' = NA, 'pop' = pop, stringsAsFactors = TRUE)
+  NA_rows
+}
+
+filler_rows <- data.table::rbindlist(apply(id_arr, MARGIN = 1, FUN = NA_grid_expander, df = long_scores))
+
+long_scores <- data.table::rbindlist(list(long_scores, filler_rows)) %>% arrange(fromId, type, nearest_n, weight)
+
+plot(density(long_scores$score, na.rm = TRUE))
+
+
+```
+
+```{r}
+
+## Export
+write.csv(long_scores, '../../data/score_sets/newest_long_scores.csv', row.names = FALSE)
+
+```
 
 
 

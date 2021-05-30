@@ -45,7 +45,8 @@ sum_score_fxn <- function(df, weight = FALSE, log_normalize_score = TRUE, normal
   
   ## sum scores and normalize (OPTION 1)
   df <- df %>% 
-      mutate(score = sum(unique_score)) %>%
+      group_by(fromId, type) %>% 
+      summarize(score = sum(unique_score)) %>%
       group_by(type) %>%
       mutate(score = normalize_vec(score, x = 0.01, y = 0.99, log = log_normalize_score))
   
@@ -68,9 +69,9 @@ sum_score_fxn <- function(df, weight = FALSE, log_normalize_score = TRUE, normal
 
 
 
-# sum score function : SUM [i..n] (1 / (traveltime_i + std_traveltime_i) + ... ))
+# sum score function : SUM [i..n] (1 / (traveltime_i + 2*std_traveltime_i) + ... ))
 
-sum_score_fxn_2 <- function(df, weight = FALSE, log_normalize_score = TRUE, normalize_df = FALSE, x=1, y=10) {
+sum_score_fxn_2 <- function(df, weight = FALSE, log_normalize_score = FALSE, normalize_df = FALSE, x=1, y=10) {
   
   
   # custom range data normalization prior to score computation
@@ -84,7 +85,7 @@ sum_score_fxn_2 <- function(df, weight = FALSE, log_normalize_score = TRUE, norm
   ## sum scores and normalize (OPTION 1)
   df <- df %>% 
     group_by(fromId, type) %>% 
-    summarise(score = sum(unique_score)) %>%
+    summarize(score = sum(unique_score)) %>%
     group_by(type) %>%
     mutate(score = normalize_vec(score, x = 0.01, y = 0.99, log = log_normalize_score))
   
