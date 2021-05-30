@@ -34,7 +34,8 @@ function(input, output, session) {
   
   # colour palette (including NA)
   Rd2Gn <- c("#e30606", "#fd8d3c", "#ffe669", "#cdff5e", "#64ed56")
-  pal_fun <- colorQuantile(palette = Rd2Gn, NULL, n = 5)
+  #pal_fun <- colorQuantile(palette = Rd2Gn, NULL, n = 5)
+  pal_fun <-  colorNumeric(Rd2Gn, domain = 0:1)
   
   # Reload map whenever new scoring scheme is selected
   dashboard_int = reactive({

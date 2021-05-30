@@ -29,8 +29,8 @@ navbarPage("Transit Accessibility Dashboard", id="nav",
         selectInput(inputId = "nearest_n", label =  "Nearest n amenities", choices = c('all', '1', '2', '3')),
 
         #Plots
-        plotOutput("histCentile", height = 200),
-        plotOutput("scatterCollegeIncome", height = 250)
+       # plotOutput("histCentile", height = 200),
+       # plotOutput("scatterCollegeIncome", height = 250)
       ),
 
       # Create citation for map source
