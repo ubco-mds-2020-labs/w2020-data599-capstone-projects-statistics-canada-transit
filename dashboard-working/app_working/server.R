@@ -7,7 +7,8 @@ library(sf)
 library(tidyverse)
 
 # Import score data (long table)
-allblocks <- read.csv("../../data/score_sets/long_scores.csv", stringsAsFactors = TRUE)
+#allblocks <- read.csv("../../data/score_sets/long_scores.csv", stringsAsFactors = TRUE)
+allblocks <- read.csv("../../data/score_sets/newest_long_scores.csv", stringsAsFactors = TRUE)
 allblocks$fromId <- as.character(allblocks$fromId)
 
 # Import shape file data
@@ -34,8 +35,8 @@ function(input, output, session) {
   
   # colour palette (including NA)
   Rd2Gn <- c("#e30606", "#fd8d3c", "#ffe669", "#cdff5e", "#64ed56")
-  #pal_fun <- colorQuantile(palette = Rd2Gn, NULL, n = 5)
-  pal_fun <-  colorNumeric(Rd2Gn, domain = 0:1)
+  pal_fun <- colorQuantile(palette = Rd2Gn, NULL, n = 5)
+  #pal_fun <-  colorNumeric(Rd2Gn, domain = 0:1)
   
   # Reload map whenever new scoring scheme is selected
   dashboard_int = reactive({
