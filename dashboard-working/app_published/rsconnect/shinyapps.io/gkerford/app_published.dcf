@@ -1,0 +1,13 @@
+name: app_published
+title: app_published
+username:
+account: gkerford
+server: shinyapps.io
+hostUrl: https://api.shinyapps.io/v1
+appId: 4210308
+bundleId: 4661727
+url: https://gkerford.shinyapps.io/app_published/
+when: 1622486501.07132
+lastSyncTime: 1622486501.07132
+asMultiple: FALSE
+asStatic: FALSE
