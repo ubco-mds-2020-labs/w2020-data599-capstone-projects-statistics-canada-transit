@@ -6,10 +6,16 @@ library(dplyr)
 library(sf)
 library(tidyverse)
 
+
+# Import data for isochrone
+
+
 # Import score data (long table)
 #allblocks <- read.csv("../../data/score_sets/long_scores.csv", stringsAsFactors = TRUE)
 allblocks <- read.csv("../../data/score_sets/newest_long_scores.csv", stringsAsFactors = TRUE)
 allblocks$fromId <- as.character(allblocks$fromId)
+
+#nearest_1_ttm <- read.csv("../../data/score_sets/nearest_1_ttm.csv", stringsAsFactors = TRUE)
 
 # Import shape file data
 # keep necessary columns and rows for shp
@@ -17,13 +23,13 @@ canada_dbs <- st_read("../../code/Visualizations/census2016_DBS_shp/DB_Van_CMA/D
 van_dbs <- data.frame(canada_dbs[which(canada_dbs$CMANAME == "Vancouver"), ])
 van_dbs$ID <- seq.int(nrow(van_dbs))
 clean_van_dbs <- van_dbs[, c(1, 28, 29)]
-
+head(clean_van_dbs)
 # join data into a single dataframe
 # convert back to sf object
 van_dbs_scores <- left_join(clean_van_dbs, allblocks, by = c('DBUID' = 'fromId'))
 van_dbs_scores_sf <- st_as_sf(van_dbs_scores)
 van_dbs_scores_st <- st_transform(van_dbs_scores_sf,crs = 4326)
-
+van_dbs_scores_st
 #Prepare data for interactive dashboard
 blockdata <- allblocks[sample.int(nrow(allblocks)),]
 blockdata <- blockdata[order(blockdata$score),]
@@ -68,6 +74,8 @@ function(input, output, session) {
               values=~score,  # value to be passed to palette function
               title = "Vancouver Gallery Transit Accessibility") # legend title
   })
+  
+  
   
 #### CODE FOR PLOTS
 #### REQUIRES LATITUDE, LONGITUDE & POPULATION DATA IN EXCEL FILES
