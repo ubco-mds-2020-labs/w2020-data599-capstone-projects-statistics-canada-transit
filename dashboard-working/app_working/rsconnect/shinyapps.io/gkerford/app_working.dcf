@@ -1,0 +1,11 @@
+name: app_working
+title:
+username:
+account: gkerford
+server: shinyapps.io
+hostUrl: https://api.shinyapps.io/v1
+appId: 4210282
+bundleId: 4661694
+url: https://gkerford.shinyapps.io/app_working/
+when: 1622485570.39558
+lastSyncTime: 1622485570.39558
