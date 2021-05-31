@@ -160,32 +160,33 @@ nearest_1_ttm <- score_all %>%
                   group_by(fromId, type) %>%
                   summarise(avg_unique_time = min(avg_unique_time), 
                             sd_unique_time = sd_unique_time[which.min(avg_unique_time)],
-                            weight = weight[which.min(avg_unique_time)],
-                            weighted_score = sum(weighted_score),
-                            raw_score = sum(raw_score))
+                            weight = weight[which.min(avg_unique_time)]) %>%
+  mutate(weighted_score = (1+weight)/(avg_unique_time + 2*sd_unique_time), 
+         raw_score = 1/(avg_unique_time + 2*sd_unique_time))
 
 nearest_2_ttm <- score_all %>%
                   group_by(fromId, type) %>%
                   summarise(avg_unique_time = na.omit(sort(avg_unique_time)[1:2]), 
                             sd_unique_time = sd_unique_time[which(na.omit(avg_unique_time == sort(avg_unique_time)[1:2]))], 
-                            weight = weight[which(na.omit(avg_unique_time == sort(avg_unique_time)[1:2]))], 
-                            weighted_score = sum(weighted_score),
-                            raw_score = sum(raw_score))
+                            weight = weight[which(na.omit(avg_unique_time == sort(avg_unique_time)[1:2]))]) %>% 
+    mutate(weighted_score = (1+weight)/(avg_unique_time + 2*sd_unique_time), 
+           raw_score = 1/(avg_unique_time + 2*sd_unique_time))
+
 
 nearest_3_ttm <- score_all %>%
                   group_by(fromId, type) %>%
                   summarise(avg_unique_time = na.omit(sort(avg_unique_time)[1:3]), 
                             sd_unique_time = sd_unique_time[which(na.omit(avg_unique_time == sort(avg_unique_time)[1:3]))], 
-                            weight = weight[which(na.omit(avg_unique_time == sort(avg_unique_time)[1:3]))], 
-                            weighted_score = sum(weighted_score),
-                            raw_score = sum(raw_score))
+                            weight = weight[which(na.omit(avg_unique_time == sort(avg_unique_time)[1:3]))]) %>% 
+      mutate(weighted_score = (1+weight)/(avg_unique_time + 2*sd_unique_time), 
+             raw_score = 1/(avg_unique_time + 2*sd_unique_time))
 
 
 # scores by nearest amenities
 
-n1_ttm_score <- normalize_df(nearest_1_ttm, x = 0.001, y = 0.999, log = FALSE)
-n2_ttm_score <- normalize_df(nearest_2_ttm, x = 0.001, y = 0.999, log = FALSE)
-n3_ttm_score <- normalize_df(nearest_3_ttm, x = 0.001, y = 0.999, log = FALSE)
+n1_ttm_score <- normalize_df(nearest_1_ttm, x = 0.01, y = 0.99, log = FALSE)
+n2_ttm_score <- normalize_df(nearest_2_ttm, x = 0.01, y = 0.99, log = FALSE)
+n3_ttm_score <- normalize_df(nearest_3_ttm, x = 0.01, y = 0.99, log = FALSE)
 n1_ttm_score
 ```
 
