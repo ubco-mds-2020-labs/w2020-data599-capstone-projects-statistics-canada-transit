@@ -31,7 +31,7 @@ allblocks$fromId <- as.character(allblocks$fromId)
 
 # Import shape file data
 # keep necessary columns and rows for shp
-canada_dbs <- st_read("../../../code/Visualizations/census2016_DBS_shp/DB_Van_CMA/DB_Van_CMA.shp", stringsAsFactors = FALSE)
+canada_dbs <- st_read("../../../data/census2016_DBS_shp/DB_Van_CMA/DB_Van_CMA.shp", stringsAsFactors = FALSE)
 van_dbs <- data.frame(canada_dbs[which(canada_dbs$CMANAME == "Vancouver"), ])[, c(1, 28)]
 
 # join factor and geometry data 
@@ -101,7 +101,7 @@ map_maker_saver <- function(data, amenity, weight, nearest_n) {
 
 ```{r}
 
-for (amenity in unique(allblocks$type)[4]) { 
+for (amenity in unique(allblocks$type)) { 
   for (weight in unique(allblocks$weight)) {
     for (nearest_n in unique(allblocks$nearest_n)) {
       

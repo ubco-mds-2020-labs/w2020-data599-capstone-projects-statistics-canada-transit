@@ -13,7 +13,7 @@ allblocks$fromId <- as.character(allblocks$fromId)
 
 # Import shape file data
 # keep necessary columns and rows for shp
-canada_dbs <- st_read("../../code/Visualizations/census2016_DBS_shp/DB_Van_CMA/DB_Van_CMA.shp", stringsAsFactors = FALSE)
+canada_dbs <- st_read("../../data/census2016_DBS_shp/DB_Van_CMA/DB_Van_CMA.shp", stringsAsFactors = FALSE)
 van_dbs <- data.frame(canada_dbs[which(canada_dbs$CMANAME == "Vancouver"), ])
 van_dbs$ID <- seq.int(nrow(van_dbs))
 clean_van_dbs <- van_dbs[, c(1, 28, 29)]

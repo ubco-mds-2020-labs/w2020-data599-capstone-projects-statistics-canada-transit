@@ -50,6 +50,9 @@ Our primary interest would be gallery(n=99),library(n=86),museum(n=92) and theat
 
 Weight index function takes two arguments, *data* and *type*. *data* should contain the info of amenities such as poi_name,pid,Rating,Total_review,opening_hours,opening_days and total hours. The second argument is the amenity type of interest, for example, museum, gallery, library or archives,etc. Once the function has been called, it returns a list that contains the dataset with weighted amenity index,density plots, correlation plot with corresponding features.
 
+
+
+$$Normalize_i = \frac{Value_i-min(Value)}{max(Value)-min(Value)}$$
 ```{R}
 weight_index<-function(data,Amenity="museuem"){
   data%>%filter(type==Amenity)->poi_type
@@ -93,10 +96,15 @@ weight_index<-function(data,Amenity="museuem"){
   cor_matrix<-cor(poi_type[-1], use = "complete.obs")
   corrplot<-corrplot(cor_matrix, method =  "number")
   
-  # normized the features 
+  
+  
+  # normalize the features 
   normalize <- function(x) {
 return ((x - min(x)) / (max(x) - min(x)))
-}
+  }
+  
+  
+  
   Norm_poi<-poi_type%>%mutate_if(is.numeric, normalize)
   
   # Navie weighted index 
