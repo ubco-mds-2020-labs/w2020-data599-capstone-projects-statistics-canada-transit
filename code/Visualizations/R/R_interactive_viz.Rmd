@@ -200,7 +200,13 @@ plot(van_dbs_scores_sf$geometry)
 
 ```
 
+### import isochrone one nearest score set
 
+
+```{R}
+iso_df <- read.csv("../../../data/score_sets/newearest_1_ttm.csv", stringsAsFactors = TRUE)
+
+```
 
 ## Visualizing in leaflet
 
