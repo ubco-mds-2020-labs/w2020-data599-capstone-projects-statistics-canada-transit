@@ -1,0 +1,13 @@
+name: dashboard
+title: dashboard
+username:
+account: gkerford
+server: shinyapps.io
+hostUrl: https://api.shinyapps.io/v1
+appId: 4219395
+bundleId: 4669825
+url: https://gkerford.shinyapps.io/dashboard/
+when: 1622657529.76623
+lastSyncTime: 1622657529.76623
+asMultiple: FALSE
+asStatic: FALSE
