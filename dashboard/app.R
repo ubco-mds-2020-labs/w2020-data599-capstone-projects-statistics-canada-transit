@@ -8,7 +8,7 @@ weight_factor <- c('No', 'Yes')
 nearest_n_factor <- c('1', '2', '3', 'ALL')
 
 # Directory path
-map_dir <- "/Maps"      #"../../data/New HTML Maps/"
+map_dir <- "/Upd_HTML_Maps"      #"../../data/Upd_HTML_Maps/"
 addResourcePath('maps', paste0(getwd(), map_dir)) # 'maps' is the name of the resource
 
 ui <- shinyUI(
@@ -43,6 +43,9 @@ ui <- shinyUI(
                           "----",
                           "Visualizations",
                           tabPanel("Interprettable Isochrones"),
+                          tabPanel("Kepler Visualizations",
+                            htmlOutput('kepler'),
+                          ),
                           tabPanel("Network Efficiency"),
                           tabPanel("Urban Equity"),
                           "----",
@@ -67,15 +70,16 @@ server <- function(input, output){
     # dynamic file calling
     output$map <- renderUI({
         tags$iframe(seamless="seamless", src=paste0('maps', getPage()),
-                    #class="responsive-iframe",
-                    #allowfullscreen = TRUE,
                     width='100%',
                     height='1250') # dynamic height (100%) doesn't work so I set it manually
     })
     
-    # view path - test string
-    #output$string_path <- renderText({ getPage() })
-    
+    # dynamic file calling
+    output$kepler <- renderUI({
+        tags$iframe(seamless="seamless", src=paste0('maps', "/all_type_Kepler.html"),
+                    width='100%',
+                    height='1250') # dynamic height (100%) doesn't work so I set it manually
+    })
 }
     
 shinyApp(ui, server)
