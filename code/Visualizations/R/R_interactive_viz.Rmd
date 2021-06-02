@@ -93,7 +93,7 @@ map_maker_saver <- function(data, amenity, weight, nearest_n) {
   
   file_name <- glue('{amn_name} Transit Accessibility - Weighted ({weight}) - Nearest Amenities ({str_to_upper(nearest_n)})')
 
-  mapshot(map, url = paste0(getwd(), glue("/Updated HTML Maps/{file_name}.html")))
+  mapshot(map, url = paste0(getwd(), glue("/Upd_HTML_Maps/{file_name}.html")))
 
 }
 ```
