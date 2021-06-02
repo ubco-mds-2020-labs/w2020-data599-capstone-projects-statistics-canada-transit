@@ -93,7 +93,7 @@ map_maker_saver <- function(data, amenity, weight, nearest_n) {
   
   file_name <- glue('{amn_name} Transit Accessibility - Weighted ({weight}) - Nearest Amenities ({str_to_upper(nearest_n)})')
 
-  mapshot(map, url = paste0(getwd(), glue("/New HTML Maps/{file_name}.html")))
+  mapshot(map, url = paste0(getwd(), glue("/Updated HTML Maps/{file_name}.html")))
 
 }
 ```
@@ -200,13 +200,7 @@ plot(van_dbs_scores_sf$geometry)
 
 ```
 
-### import isochrone one nearest score set
 
-
-```{R}
-iso_df <- read.csv("../../../data/score_sets/newearest_1_ttm.csv", stringsAsFactors = TRUE)
-
-```
 
 ## Visualizing in leaflet
 
