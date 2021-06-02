@@ -172,7 +172,7 @@ head(isochrone_frame)
 ```{r}
 
 # see how many trips in each time_group
-ttm_full %>% group_by(time_group) %>% summarise(n = n()) -> t_groups
+isochrone_frame %>% group_by(time_groups) %>% summarise(n = n()) -> t_groups
 
 plot(t_groups$n, type = 'b')
 ```
@@ -216,7 +216,7 @@ values, the visualizations will be identical.
 
 ```{r}
 # import score functions
-source('Score Modeling/Updated_Score_Functions.R')
+source('Updated_Score_Functions.R')
 
 score_list <- list()
 i <- 1
@@ -282,7 +282,7 @@ NA_grid_maker <- function(id, df, isochrone = FALSE) {
   
   # get missing amenities by indexing the fromId and keeping only unique types
   missing_amenities <- setdiff(all_amenities, unique(df$type[df$fromId == id]))
-  
+
   if (isochrone == FALSE) {
     # create NA rows to append via expand.grid (creates a row for every factor combination)
     NA_rows <- expand.grid('fromId' = id,
@@ -363,6 +363,11 @@ Now lets add population data to the scores and isochrone frame
 filled_scores_long <- right_join(filled_scores_long, origins, by = c('fromId' = 'id'))
 filled_isochrone_frame <- right_join(isochrone_frame, origins, by = c('fromId' = 'id'))
 
+nrow(isochrone_frame)
+nrow(filled_isochrone_frame)
+
+filled_isochrone_frame[is.na(filled_isochrone_frame$time_groups), ]
+isochrone_viz_frame_st
 ```
 
 ```{r}
@@ -494,6 +499,9 @@ map_maker_isochrone <- function(data, amenity) {
 ```
 
 ```{r}
+isochrone_viz_frame_st[is.na(isochrone_viz_frame_st$time_groups), ]
+isochrone_viz_frame_st
+
 map_maker_isochrone(isochrone_viz_frame_st, 'gallery')
 
 ```
@@ -512,7 +520,7 @@ for (amenity in unique(scores_viz_frame_st$type)) {
   for (weight in unique(scores_viz_frame_st$weight)) {
     for (nearest_n in unique(scores_viz_frame_st$nearest_n)) {
       
-      # 16 others
+      # 16 / 32 others
       map_maker_scores(data = scores_viz_frame_st, amenity, weight, nearest_n)
       
     }
