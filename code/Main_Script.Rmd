@@ -216,7 +216,7 @@ values, the visualizations will be identical.
 
 ```{r}
 # import score functions
-source('Score Modeling/Updated_Score_Functions.R')
+source('Updated_Score_Functions.R')
 
 score_list <- list()
 i <- 1
@@ -495,7 +495,6 @@ map_maker_isochrone <- function(data, amenity) {
 
 ```{r}
 map_maker_isochrone(isochrone_viz_frame_st, 'gallery')
-
 ```
 
 
