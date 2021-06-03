@@ -43,7 +43,29 @@ ui <- shinyUI(
                navbarMenu("More",
                           "----",
                           "Visualizations",
-                          tabPanel("Interprettable Isochrones"),
+                          tabPanel("Interprettable Isochrones",
+                                   div(class="outer",
+                                       
+                                       # styles
+                                       tags$head(includeCSS("styles.css"), includeScript("gomap.js")),
+                                       
+                                       # view path - test string
+                                       #mainPanel(br(), br(), textOutput('string_path')),
+                                       
+                                       # options panel
+                                       absolutePanel(id = "controls", class = "panel panel-default",
+                                                     fixed = TRUE, draggable = TRUE,
+                                                     top = 60, left = "auto", right = 20, bottom = "auto",
+                                                     width = 330, height = "auto",
+                                                     h2("Accessibility Explorer"),
+                                                     selectInput(inputId = "type_iso", label = "Amenity Type", choices = amenity_factor)),
+                                       
+                                        # get the map
+                                        htmlOutput('map_iso'),
+                                       # citations
+                                       tags$div(id="cite", 'Data compiled for ', tags$em('Citation Here'), ' by Author (Publisher, Year).'))
+                          ),
+                          
                           tabPanel("Kepler Visualizations",
                             htmlOutput('kepler'),
                           ),
@@ -68,6 +90,12 @@ server <- function(input, output){
         return(glue('/{html_file}.html'))
     })
     
+    getPage_iso <- reactive({ 
+        amn_name <- input$type_iso
+        html_file <-  glue('{amn_name} Transit Isochrone')
+        return(glue('/{html_file}.html'))
+    })
+    
     # dynamic file calling
     output$map <- renderUI({
         tags$iframe(seamless="seamless", src=paste0('maps', getPage()),
@@ -78,6 +106,13 @@ server <- function(input, output){
     # dynamic file calling
     output$kepler <- renderUI({
         tags$iframe(seamless="seamless", src=paste0('maps', "/all_type_Kepler.html"),
+                    width='100%',
+                    height='1250') # dynamic height (100%) doesn't work so I set it manually
+    })
+    
+    # dynamic file calling isochrone map
+    output$map_iso <- renderUI({
+        tags$iframe(seamless="seamless", src=paste0('maps', getPage_iso()),
                     width='100%',
                     height='1250') # dynamic height (100%) doesn't work so I set it manually
     })
