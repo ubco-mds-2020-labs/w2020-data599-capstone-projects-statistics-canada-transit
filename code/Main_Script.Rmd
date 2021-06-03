@@ -56,7 +56,6 @@ origins$pop <- str_replace_all(origins$pop, ',', '')
 # change col types
 origins$pop <- as.numeric(origins$pop)  
 origins$id <- as.factor(origins$id)  
-
 n_origins <- nrow(origins)
 paste('Origin Rows: ', n_origins)
 
@@ -106,6 +105,9 @@ ttm$avg_time <- pmax(ttm$avg_time, 1)
 # use left join since we only care to keep existing amenities in the ttm
 ttm <-  left_join(ttm, destinations, by = c('toId' = 'id'))
 
+
+unique(ttm$toId)%>%length()
+unique(destinations$id)%>%length()
 # how many origins actually have transit accessibility
 paste('Origins considered:', round((length(unique(ttm$fromId))/n_origins)*100, 2), '%')
 paste('Destinations considered:', round(length(unique(ttm$toId))/n_amenities*100, 2), '%')
@@ -127,7 +129,7 @@ in the weight set.
 ```{r}
 # import amenity weights
 amenity_wts <- read.csv('../data/amenity_weights/amenity_wts.csv')
-
+amenity_wts
 # clean weights
 amenity_wts <- amenity_wts[, c('id', 'Index')]
 names(amenity_wts) <- c('id', 'weight')
@@ -140,11 +142,56 @@ amenity_wts %>% group_by(id) %>% summarize(n = n()) %>% arrange(desc(n))
 
 # are all the ttm amenity IDs in the weighted IDs set?
 paste('Are all the ttm amenity IDs in the weighted IDs set? (needs to be true for the join to work)')
-all(unique(ttm$toId) %in% unique(amenity_wts$id))
 
+all(unique(ttm$toId) %in% unique(amenity_wts$id))
+length(unique(ttm$toId))
 
 # join when weight index is corrected
 #destinations <- left_join(destinations, amenity_wts, by = c('id' = 'id'))
+
+
+```
+
+#### fixed unequal number of ttm amenity IDs in the weighted IDs
+
+```{R}
+
+unique(ttm$toId)[unique(ttm$toId) %in% unique(amenity_wts$id)]
+
+
+
+unique(amenity_wts$id)%>%length()
+id_in_ttm<-unique(ttm$toId)[unique(ttm$toId) %in% unique(amenity_wts$id)]
+
+### subset these id that not in amenity wts
+amenity_wts
+ttm_sub<-subset(ttm, !(toId %in% id_in_ttm))
+paste('Number of id that not in amenity wts ', unique(ttm_sub$toId)%>%length())
+# assgin minium weight on those places
+ttm_sub_id<-unique(ttm_sub$toId)
+ttm_sub_id<-as.data.frame(ttm_sub_id)
+ttm_sub_id$weight<-min(amenity_wts$weight)
+colnames(ttm_sub_id)[1]<-"id"
+ttm_sub_id
+amenity_wts
+amenity_wts<-rbind(amenity_wts,ttm_sub_id)
+# are all the ttm amenity IDs in the weighted IDs set?
+paste('Are all the ttm amenity IDs in the weighted IDs set? (needs to be true for the join to work)')
+all(unique(ttm$toId) %in% unique(amenity_wts$id))
+
+if (all(unique(ttm$toId) %in% unique(amenity_wts$id))==TRUE){
+  # join when weight index is corrected
+  destinations <- left_join(destinations, amenity_wts, by = c('id' = 'id'))
+  ttm <-  left_join(ttm, destinations, by = c('toId' = 'id'))
+  
+
+}
+
+
+
+ttm$type<-ttm$type.x
+
+
 
 ```
 
@@ -172,8 +219,7 @@ head(isochrone_frame)
 ```{r}
 
 # see how many trips in each time_group
-ttm_full %>% group_by(time_group) %>% summarise(n = n()) -> t_groups
-
+isochrone_frame %>% group_by(time_groups) %>% summarise(n = n()) -> t_groups
 plot(t_groups$n, type = 'b')
 ```
 
@@ -216,23 +262,31 @@ values, the visualizations will be identical.
 
 ```{r}
 # import score functions
-source('Score Modeling/Updated_Score_Functions.R')
+source('Updated_Score_Functions.R')
 
 score_list <- list()
+score_list_weighted<-list()
 i <- 1
 
 for (n in c(1, 2, 3, 4)) {
   
   if (n == 4) { n <- NULL }
   score <- sum_score_fxn(ttm, nearest_n = n, weight = FALSE, log_normalize_score = FALSE)
+
+  score_weighted <- sum_score_fxn(ttm, nearest_n = n, weight = TRUE, log_normalize_score = FALSE)
   score_list[[i]] <- score
+  score_list_weighted[[i]]<-score_weighted
+  
   i <- i+1
   
 }
 
-scores_long <- rbindlist(score_list) %>% arrange(fromId, nearest_n)
 
-scores_long
+scores_long_unweighted <- rbindlist(score_list) %>% arrange(fromId, nearest_n)
+scores_long_weighted <- rbindlist(score_list_weighted) %>% arrange(fromId, nearest_n)
+
+
+scores_long<-rbind(scores_long_weighted,scores_long_unweighted)
 
 ```
 
@@ -257,7 +311,7 @@ to re-add those NA values.
 
 ```{r}
 # target zone count
-x <- 16
+x <- 32
 
 # check for the inconsistency in values
 counted <- scores_long %>% group_by(fromId) %>% summarize(n = n()) %>% arrange(n) 
@@ -436,7 +490,7 @@ map_maker_scores <- function(data, amenity, weight, nearest_n) {
   file_name <- glue('{amn_name} Transit Accessibility - Weighted ({weight}) - Nearest Amenities ({str_to_upper(nearest_n)})')
   
   map
-  #mapshot(map, url = paste0(getwd(), glue("/New HTML Maps/{file_name}.html")))
+  mapshot(map, url = paste0(getwd(), glue("/New HTML Maps/{file_name}.html")))
 
 }
 
@@ -486,16 +540,20 @@ map_maker_isochrone <- function(data, amenity) {
   file_name <- glue('{amn_name} Transit Isochrone')
   
   map
-  #mapshot(map, url = paste0(getwd(), glue("/New HTML Maps/{file_name}.html")))
+  mapshot(map, url = paste0(getwd(), glue("/New HTML Maps/{file_name}.html")))
 
 }
 
 
 ```
 
-```{r}
-map_maker_isochrone(isochrone_viz_frame_st, 'gallery')
 
+
+
+
+```{r}
+map_maker_scores(scores_viz_frame_st, 'gallery',"no","1")
+map_maker_isochrone(data = isochrone_viz_frame_st, "gallery")
 ```
 
 
@@ -503,8 +561,10 @@ map_maker_isochrone(isochrone_viz_frame_st, 'gallery')
 ## 5) Map HTML Exports
 
 ```{r}
-
-for (amenity in unique(scores_viz_frame_st$type)) { 
+# exclue NA in type
+type_name<-unique(scores_viz_frame_st$type)
+type_name
+for (amenity in type_name) { 
   
   # 4 isochrone maps
   map_maker_isochrone(data = isochrone_viz_frame_st, amenity)
