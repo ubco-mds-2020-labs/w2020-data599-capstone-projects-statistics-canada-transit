@@ -8,7 +8,8 @@ weight_factor <- c('No', 'Yes')
 nearest_n_factor <- c('1', '2', '3', 'ALL')
 
 # Directory path
-map_dir <- "/Upd_HTML_Maps"      #"../../data/Upd_HTML_Maps/"
+#map_dir <- "/Upd_HTML_Maps"      #"../../data/Upd_HTML_Maps/"
+map_dir <- "/New HTML Maps"
 addResourcePath('maps', paste0(getwd(), map_dir)) # 'maps' is the name of the resource
 
 ui <- shinyUI(

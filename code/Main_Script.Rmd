@@ -186,12 +186,8 @@ if (all(unique(ttm$toId) %in% unique(amenity_wts$id))==TRUE){
   
 
 }
-
-
-
+head(ttm)
 ttm$type<-ttm$type.x
-
-
 
 ```
 
@@ -387,8 +383,6 @@ NA_table_filler <- function(df, custom_idx = NULL, isochrone = FALSE) {
 
 partial_filled_scores_long <- NA_table_filler(scores_long)
 
-
-
 ```
 
 Although, recall that not all origins were used in the score computation, 
@@ -397,7 +391,6 @@ so we need to add those NA values as well.
 ```{r}
 missing_blocks <- array(setdiff(origins$id, partial_filled_scores_long$fromId))
 
-
 # fill partial_filled_scores_long
 filled_scores_long <- NA_table_filler(partial_filled_scores_long,
                                       custom_idx = missing_blocks)
@@ -405,7 +398,12 @@ filled_scores_long <- NA_table_filler(partial_filled_scores_long,
 # fill isochrone frame
 filled_isochrone_frame <- NA_table_filler(isochrone_frame,
                                           custom_idx = missing_blocks,
-                                          isochrone = TRUE)
+                                          isochrone=TRUE)
+
+
+
+
+sum(is.na(filled_isochrone_frame$type))
 ```
 
 
@@ -552,8 +550,11 @@ map_maker_isochrone <- function(data, amenity) {
 
 
 ```{r}
+
+sum(is.na(isochrone_viz_frame_st$type))
 map_maker_scores(scores_viz_frame_st, 'gallery',"no","1")
-map_maker_isochrone(data = isochrone_viz_frame_st, "gallery")
+map_maker_isochrone(data = isochrone_viz_frame_st,"museum" )
+sub
 ```
 
 
