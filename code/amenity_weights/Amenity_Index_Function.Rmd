@@ -29,6 +29,7 @@ review_poi<- read_csv("~/Desktop/MDS/data599/google-reviews-arts/google_reviews_
 van_poi<-read_csv("~/Desktop/MDS/data599/w2020-data599-capstone-projects-statistics-canada-transit/data/clean/vancouver_facilities_2.csv")
 ```
 
+
 ```{R}
 #Merge review dataset with vancouver point of interest
 left_join(review_poi,van_poi,by=c("poi_name"="name"))%>%distinct()->merged_data
@@ -43,8 +44,54 @@ merged_data%>% convert(num(Rating, Total_Review,open_days,Total_hours))->merged_
 **Number of amenity in each type of arts facility **
 ```{R}
 merged_data%>%group_by(type)%>%count()
+
 ```
 Our primary interest would be gallery(n=99),library(n=86),museum(n=92) and theatre(n=75)
+
+
+
+##### visualize missing value 
+```{R}
+merged_data%>%select(poi_name,Name,open_days,Total_hours,Rating,Total_Review)->df
+
+colnames(df)
+colnames(df) <- c("POI Name", "Google Place Name","Open Days","Open Hours","Rating","Total Review")
+df[df == 0] <- NA
+missing_percentage<-colMeans(is.na(df))
+missing.values <- df%>%
+  gather(key = "key", value = "val") %>%
+  mutate(isna = is.na(val)) %>%
+  group_by(key) %>%
+  mutate(total = n()) %>%
+  group_by(key, total, isna) %>%
+  summarise(num.isna = n()) %>%
+  mutate(pct = num.isna / total * 100)
+missing.values
+df
+
+levels <-(missing.values  %>% filter(isna == T) %>% arrange(desc(pct)))$key
+
+label_txt<-missing.values%>% filter(isna == T)%>%select(pct)
+
+label_txt$pct<-floor(label_txt$pct)
+
+percentage.plot <- missing.values %>%
+      ggplot() +
+        geom_bar(aes(x = reorder(key, desc(pct)), 
+                     y = pct, fill=isna), 
+                 stat = 'identity', alpha=0.8) +
+     geom_text(data=label_txt,aes(label =pct,x= reorder(key, desc(pct)),y=pct), size = 3,hjust=-1.1)+
+      scale_x_discrete(limits = levels) +
+      scale_fill_manual(name = "", 
+                        values = c('steelblue', 'tomato3'), labels = c("Present", "Missing")) +
+      coord_flip() +
+      labs(title = "Percentage of missing values", x =
+             'Variable', y = "% of missing values")
+
+p<-percentage.plot+ theme_minimal()
+
+ggsave("amenity_missing.png", width = 5, height = 2)
+```
 
 ### Weight Index function 
 

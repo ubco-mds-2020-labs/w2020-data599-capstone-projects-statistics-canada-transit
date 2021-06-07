@@ -1,0 +1,321 @@
+---
+title: "Many-to-Many Point Computation Script"
+author: "Rain Shen"
+output:
+  pdf_document: default
+  html_document:
+    df_print: paged
+---
+
+### Loading libraries
+```{r include=FALSE}
+
+library(r5r)
+library(rJava)
+library(sf)
+library(data.table)
+
+library(tidyverse)
+library(glue)
+library(rlist)
+
+```
+
+
+### 1. Setup the Network Graph
+
+- If the vancouver_canada.osm.pbf file needs to be converted to an .osm, one can use a binary osm converter available at: https://wiki.openstreetmap.org/wiki/Osmconvert#Binaries
+
+```{r message=FALSE, warning=FALSE}
+## Allocate 4G RAM to Java
+options(java.parameters = "-Xmx4g")
+
+## Build transport network, pointing to path where OSM and GTFS data are located
+r5r_core <- setup_r5(data_path = getwd(), verbose = FALSE)
+```
+
+
+### 2. Load origin/destination points
+
+```{r, warning=FALSE}
+
+# Dissemination Blocks
+# origins <- fread(file.path("../../data/clean", "vancouver_db.csv"))
+origins <- read.csv("vancouver_db.csv")
+paste('Origin Rows: ', nrow(origins))
+
+origins <- origins[, c(1,3,4)]
+colnames(origins)[1] <- 'id'
+origins$id <- as.character(origins$id)  # numeric to char
+
+head(origins)
+```
+
+```{r message=FALSE, warning=FALSE}
+# Cultural/Art facilities
+# destinations <- fread(file.path("../../data/clean", "vancouver_facilities_2.csv"))
+destinations <- read.csv('vancouver_facilities_2.csv')
+paste('Original Destinations: ', nrow(destinations))
+
+# See summary counts of each amenity
+destinations %>% group_by(type) %>% summarise(count = n()) %>% arrange(desc(count))
+
+# Filter amenity types to keep amenities of interest**
+target_amenities <- c('gallery', 'museum', 'library or archives', 'theatre/performance and concert hall')
+destinations <- destinations %>% filter(type %in% target_amenities)
+
+# Keep only id, lat, and lon columns
+destinations <- destinations[, 1:3]
+
+destinations$lat <-  as.numeric(destinations$lat) # char to numeric
+destinations$lon <-  as.numeric(destinations$lon) # char to numeric
+destinations$id <- as.character(destinations$id)  # numeric to char
+
+# Remove null values
+na.omit(destinations)->destinations
+
+# destinations <- destinations[complete.cases(destinations)] # remove NA rows
+paste('Filtered Destinations: ', nrow(destinations))
+
+# Peek
+head(destinations)
+
+```
+
+### 3. Set constraints
+
+```{r}
+# Non-transit : WALK, BICYCLE, CAR, BICYCLE_RENT, CAR_PARK
+# Transit: TRAM, SUBWAY, RAIL, BUS, FERRY, CABLE_CAR, GONDOLA, FUNICULAR
+mode <- c('WALK', 'TRANSIT')
+
+max_walk_dist <- 1000 # 1 km
+
+max_trip_duration <- 120 # 2 hours
+
+max_rides <- 3 # max transfers
+
+```
+
+
+### 4. Compute Expanded Travel Time Matrix
+
+- We average transit times across all weekly transit schedules so we compute travel time on:
+  - A weekday
+  - Saturday
+  - Sunday
+- We also want average transit times across time of day so we compute travel times from:
+  - 7am to 7pm at every hour mark with a departure window of 30 minutes.
+  - A window of 1 equates to a 5 minute departure window so we will use 6.
+
+
+### Friday
+
+```{r}
+all_ttms5 <- list()
+hour5 <- c()
+
+for (time in 7:19) {        # 7 to 19 hours
+    
+  departure_datetime5 <- as.POSIXct(glue("14-05-2021 {time}:00:00"), format="%d-%m-%Y %H:%M:%S")
+  
+  ttm5 <- travel_time_matrix(r5r_core = r5r_core,
+                            origins = origins,
+                            destinations = destinations,
+                            departure_datetime = departure_datetime5,
+                            time_window = 30,
+                          
+                            # constrains
+                            mode = mode,
+                            max_walk_dist = max_walk_dist,
+                            max_trip_duration = max_trip_duration,
+                            max_rides = max_rides,
+                            verbose = FALSE)
+  
+  hour5 <- append(hour5, nrow(ttm5))
+    
+  all_ttms5 <-  list.append(all_ttms5, ttm5) 
+    
+  
+}
+
+# Fast way to bind all data.frames
+TTM5 <- rbindlist(all_ttms5)
+
+print('COMPLETED')
+```
+
+```{r}
+list1 <- 7:9
+t1 <- c()
+for (i in 1:length(hour5)) {
+  
+  t <- rep(list1[i], times = hour5[i])
+  t1 <- append(t1, t)
+}
+
+t1 <- paste0("0", t1)
+
+t2 <- mapply(function(x,y) paste0(rep(x,y), collapse = ""), 0, 4 - nchar(t1))
+t1 <- paste0(t1, t2)
+
+t1 <- format(strptime(t1, format="%H%M"), format = "%H:%M")
+
+TTM5 <- cbind(t1, TTM5)
+head(TTM5)
+saveRDS(TTM5, file = "TTM5_PEAK.rds")
+```
+
+
+```{r}
+list1 <- 17:19
+t1 <- c()
+for (i in 1:length(hour5)) {
+  
+  t <- rep(list1[i], times = hour5[i])
+  t1 <- append(t1, t)
+}
+
+# t0 <- t1[1:sum(hour5[1:3])]
+# 
+# t0 <- paste0("0", t0)
+# t1[1:sum(hour5[1:3])] <- t0
+
+t2 <- mapply(function(x,y) paste0(rep(x,y), collapse = ""), 0, 4 - nchar(t1))
+t1 <- paste0(t1, t2)
+
+t1 <- format(strptime(t1, format="%H%M"), format = "%H:%M")
+
+TTM5 <- cbind(t1, TTM5)
+head(TTM5)
+# saveRDS(TTM5, file = "TTM5_1013.rds")
+```
+```{r}
+# Set the R_MAX_VSIZE to maximize the memory
+
+usethis::edit_r_environ("project")
+```
+
+```{r}
+# aggregate on each unique transit trip to compute the avg time
+# time to the same destination
+
+# TTM5 <- readRDS("TTM5.rds")
+
+TTM_agg <- TTM5 %>%
+           group_by(t1, fromId, toId) %>% 
+           summarise(
+             avg_time = mean(travel_time)
+           )
+head(TTM_agg)
+```
+
+
+```{r}
+# Export for later manipulation
+write.csv(TTM_agg, "ttm5_1719.csv", row.names = FALSE)
+
+```
+
+```{r}
+ttm_716 <- read.csv("ttm5_716.csv")
+```
+
+```{r}
+ttm_719 <- rbind(ttm_716, TTM_agg)
+write.csv(ttm_719, "ttm5_719.csv", row.names = FALSE)
+```
+
+### Saturday
+
+```{r}
+
+```
+
+### Sunday
+
+```{r}
+
+```
+
+```{r}
+# default walk speed = 3.6 km/h
+
+all_ttms <- list()
+
+for (day in 14:16) {          # May 14=Fri, 15=Sat, 16=Sun
+  for (time in 7:19) {        # 7 to 19 hours
+    
+    departure_datetime <- as.POSIXct(glue("{day}-05-2021 {time}:00:00"), format="%d-%m-%Y %H:%M:%S")
+    
+    ttm <- travel_time_matrix(r5r_core = r5r_core,
+                          origins = origins,
+                          destinations = destinations,
+                          departure_datetime = departure_datetime,
+                          time_window = 30,
+                          
+                          # constrains
+                          mode = mode,
+                          max_walk_dist = max_walk_dist,
+                          max_trip_duration = max_trip_duration,
+                          max_rides = max_rides,
+                          verbose = FALSE)
+    
+    all_ttms <-  list.append(all_ttms, ttm) # very slow: rbind(all_ttm, ttm)
+    
+    print(glue('Progress: {round(((day-14)*12 + time-6)/37*100, 1)}%'))
+  }
+}
+
+# Fast way to bind all data.frames
+TTM <- rbindlist(all_ttms)
+
+print('COMPLETED')
+
+summary(TTM)
+```
+
+
+### 5. Aggregate Travel Time Matrix 
+
+```{r}
+# aggregate on each unique transit trip to compute the avg time
+# time to the same destination
+TTM_agg <- TTM %>%
+           group_by(fromId, toId) %>% 
+           summarise(
+             avg_time = mean(travel_time), 
+             sd_time = sd(travel_time)
+           )
+
+paste('First aggregation:')
+summary(TTM_agg)
+
+```
+
+
+
+### 6. Fix Odd Values in sd_time
+
+```{r}
+
+# replace NAs with median value
+# even if these are rare trips (1 trip means NA in sd)
+# the bus still probably comes on a regular schedule with uncertainty like most stops
+median_sd <- median(TTM_agg$sd_time, na.rm=TRUE)
+TTM_agg <- TTM_agg %>% replace_na(list('sd_time'=median_sd))
+
+# replace <=1 with 1 to avoid large or infinity computations later on
+TTM_agg$sd_time[(TTM_agg$sd_time <= 1)] <-  1
+
+paste('Clean TTM Aggregation:')
+summary(TTM_agg)
+```
+
+### 7. Export
+```{r}
+# Export for later manipulation
+write.csv(TTM_agg, "../../data/clean/ttm.csv", row.names = FALSE)
+
+```
+
