@@ -238,154 +238,120 @@ values, the visualizations will be identical.
 
 
 
-```{r}
+```{r message=FALSE, warning=FALSE}
 # import score functions
-source('Updated_Score_Functions.R')
+source('functions.R')
 
 score_list <- list()
 score_list_weighted<-list()
 i <- 1
 
-for (n in c(1, 2, 3, 4)) {
+for (n in 1:4) {
   
+  # we want average of all times so N must be undefined
   if (n == 4) { n <- NULL }
+  
+  # unweighted score
   score <- sum_score_fxn(ttm, nearest_n = n, weight = FALSE, log_normalize_score = FALSE)
-
+  # weighted score
   score_weighted <- sum_score_fxn(ttm, nearest_n = n, weight = TRUE, log_normalize_score = FALSE)
+  
+  # append
   score_list[[i]] <- score
   score_list_weighted[[i]]<-score_weighted
   
   i <- i+1
-  
 }
-
 
 scores_long_unweighted <- rbindlist(score_list) %>% arrange(fromId, nearest_n)
 scores_long_weighted <- rbindlist(score_list_weighted) %>% arrange(fromId, nearest_n)
 
-
-scores_long<-rbind(scores_long_weighted,scores_long_unweighted)
-
+scores_long <- rbindlist(list(scores_long_weighted, scores_long_unweighted))
 ```
 
 
 
 ## 3) Dataset Wrangling Part II (NA Insertion)
 
-Each origin(fromId) should have x different scores based on the possible 
-equation below:
+Each origin(fromId) should have x different scores where x is defined by:
 
-*In the current file*
-1 weight options * 4 amenity options * 4 nearest options = 16
+x = 2 weight options * 4 amenity options * 4 nearest options = 32
 
-*In the future*
-2 weight options * 4 amenity options * 4 nearest options = 32
+In addition to filling the empty NA rows for included IDs, there are also IDs
+that need to be re-added as not a single time was computed for these IDs.
 
-
-Many zones however don't have any routes, such as provincial parks which aren't
-linked to via transit. To visualize them in the data we need to attribute these
-cases an NA value. Since these rows are missing we'll use the following code
-to re-add those NA values.
 
 ```{r}
-# target zone count
-x <- 32
+# values per ID (32)
+x <- 2*4*4
 
-# check for the inconsistency in values
-counted <- scores_long %>% group_by(fromId) %>% summarize(n = n()) %>% arrange(n) 
+paste0('SCORES FRAME')
 
-# check for current unique counts to make sure it's multiples of the type number
-paste('Unique counts: '); unique(counted$n)
-
-# get expected rows by multiplying unique IDs by x
-n_fromIds <- uniqueN(scores_long$fromId)
-N <- n_fromIds*x
-
+# HOW MANY ROWS TO FILL IN SCORES?
+N <- uniqueN(scores_long$fromId) * x # expected rows
 paste(glue('{nrow(scores_long)} of {N} rows filled ({round((nrow(scores_long) / N)*100, 2)}%)'))
 paste(N - nrow(scores_long), 'to fill.')
+
+cat(paste0('\n')) # line break
+
+# HOW MANY ROWS TO ADD IN SCORES?
+# existing IDs that weren't included in ttm
+missing_blocks <- array(setdiff(origins$id, scores_long$fromId))
+total_expected <- nrow(scores_long) + length(missing_blocks) * x
+paste(glue('{nrow(scores_long)} of {total_expected} rows filled ({round((nrow(scores_long) / total_expected)*100, 2)}%)'))
+paste(length(missing_blocks)*x, 'to add')
+
+cat(paste0('\n')) # line break
+paste0('ISOCHRONE FRAME')
+
+# HOW MANY ROWS TO FILL IN ISOCHRONE?
+N <- uniqueN(isochrone_frame$fromId) * 4 # expected rows
+paste(glue('{nrow(isochrone_frame)} of {N} rows filled ({round((nrow(isochrone_frame) / N)*100, 2)}%)'))
+paste(N - nrow(isochrone_frame), 'to fill.')
+
+cat(paste0('\n')) # line break
+
+# HOW MANY ROWS TO ADD IN ISOCHRONE?
+# existing IDs that weren't included in ttm
+missing_blocks <- array(setdiff(origins$id, isochrone_frame$fromId))
+total_expected <- nrow(isochrone_frame) + length(missing_blocks) * 4 # only 4 values per origin
+paste(glue('{nrow(isochrone_frame)} of {total_expected} rows filled ({round((nrow(isochrone_frame) / total_expected)*100, 2)}%)'))
+paste(length(missing_blocks)*4, 'to add')
+
+
 ```
 
 ```{r}
+# fill NA for all existing origin IDs
+filled_scores_long <- NA_table_filler(scores_long)
 
-# function for NA grid expansion 
-NA_grid_maker <- function(id, df, isochrone = FALSE) {
-  
-  all_amenities <- as.character(unique(df$type))
-  
-  # get missing amenities by indexing the fromId and keeping only unique types
-  missing_amenities <- setdiff(all_amenities, unique(df$type[df$fromId == id]))
-  
-  if (isochrone == FALSE) {
-    # create NA rows to append via expand.grid (creates a row for every factor combination)
-    NA_rows <- expand.grid('fromId' = id,
-                         'type' = missing_amenities,
-                         'weight' = as.character(unique(df$weight)),
-                         'nearest_n' = as.character(unique(df$nearest_n)),
-                         'score' = NA, 
-                         stringsAsFactors = TRUE)
-  } else {
-    # create NA rows to append via expand.grid (creates a row for every factor combination)
-    NA_rows <- expand.grid('fromId' = id,
-                         'type' = missing_amenities,
-                         'time_groups' = NA, 
-                         stringsAsFactors = TRUE)
-  }
-  
-  NA_rows
-}
-
-# function for filling table with NA values
-NA_table_filler <- function(df, custom_idx = NULL, isochrone = FALSE) {
-  
-  # count each fromId occurence
-  fromId_counts <- df %>% group_by(fromId) %>% mutate(n = n())
-  
-  if (is.null(custom_idx)) {
-    # create a fromId array using Ids that don't meet the [x] count requirement
-    id_arr <- array(unique(fromId_counts[fromId_counts$n < x, ]$fromId))
-  } else {
-    id_arr <- custom_idx
-  }
-  
-  # get rows
-  filler_rows <- rbindlist(apply(id_arr, MARGIN = 1, FUN = NA_grid_maker, df = df, isochrone = isochrone))
-
-  # append and order
-  df <- rbindlist(list(df, filler_rows), use.names = TRUE) 
-  
-  if (isochrone == FALSE) {
-    df <- df %>% arrange(fromId, type, nearest_n, weight)
-  } else {
-    df <- df %>% arrange(fromId, type)
-  }
-  
-  df
-}
+# add remaining NAs to filled_scores_long
+all_scores_long <- NA_table_filler(filled_scores_long,
+                                   custom_idx = missing_blocks)
 
 
-partial_filled_scores_long <- NA_table_filler(scores_long)
 
-```
-
-Although, recall that not all origins were used in the score computation, 
-so we need to add those NA values as well.
-
-```{r}
-missing_blocks <- array(setdiff(origins$id, partial_filled_scores_long$fromId))
-
-# fill partial_filled_scores_long
-filled_scores_long <- NA_table_filler(partial_filled_scores_long,
-                                      custom_idx = missing_blocks)
-
-# fill isochrone frame
+# fill NA for all existing origin IDs
 filled_isochrone_frame <- NA_table_filler(isochrone_frame,
-                                          custom_idx = missing_blocks,
-                                          isochrone=TRUE)
+                                          isochrone = TRUE)
+# add missing NAs to isochrone frame
+all_isochrone_frame <- NA_table_filler(filled_isochrone_frame,
+                                       custom_idx = missing_blocks,
+                                       isochrone=TRUE)
 
+```
 
+```{r}
+# check isochrones
+# there should be 4 counts per fromId
+iso_id_counts <- all_isochrone_frame %>% group_by(fromId) %>% summarise(n = n())
+unique(iso_id_counts$n)
 
+# check scores
+# there should be 32 counts per fromId
+score_id_counts <- all_scores_long %>% group_by(fromId) %>% summarise(n = n())
+unique(score_id_counts$n)
 
-sum(is.na(filled_isochrone_frame$type))
 ```
 
 
@@ -394,16 +360,16 @@ Now lets add population data to the scores and isochrone frame
 ```{r}
 # right join with origins to include origins without transit access
 
-filled_scores_long <- right_join(filled_scores_long, origins, by = c('fromId' = 'id'))
-filled_isochrone_frame <- right_join(isochrone_frame, origins, by = c('fromId' = 'id'))
+all_scores_long <- right_join(all_scores_long, origins, by = c('fromId' = 'id'))
+all_isochrone_frame <- right_join(all_isochrone_frame, origins, by = c('fromId' = 'id'))
 
 ```
 
 ```{r}
 
 ## Export checkpoint
-write.csv(filled_scores_long, 'June2_scores_long.csv', row.names = FALSE)
-write.csv(filled_isochrone_frame, 'June2_isochrone_frame.csv', row.names = FALSE)
+write.csv(all_scores_long, '../../data/html_mapping_data/scores_long.csv', row.names = FALSE)
+write.csv(all_isochrone_frame, '../../data/html_mapping_data/isochrone_frame.csv', row.names = FALSE)
 
 ```
 
@@ -411,14 +377,15 @@ write.csv(filled_isochrone_frame, 'June2_isochrone_frame.csv', row.names = FALSE
 ## 4) Interactive Visualization
 ```{r}
 # join factor and geometry data 
-scores_viz_frame <- left_join(vancouver_shape, filled_scores_long, by = c('DBUID' = 'fromId'))
-isochrone_viz_frame <- left_join(vancouver_shape, filled_isochrone_frame, by = c('DBUID' = 'fromId'))
+scores_viz_frame <- left_join(vancouver_shape, all_scores_long, by = c('DBUID' = 'fromId'))
+isochrone_viz_frame <- left_join(vancouver_shape, all_isochrone_frame, by = c('DBUID' = 'fromId'))
 
 # convert back to sf object
 scores_viz_frame_sf <- st_as_sf(scores_viz_frame)
-scores_viz_frame_st <- st_transform(scores_viz_frame_sf, crs = 4326)
-
 isochrone_viz_frame_sf <- st_as_sf(isochrone_viz_frame)
+
+# convert to st object
+scores_viz_frame_st <- st_transform(scores_viz_frame_sf, crs = 4326)
 isochrone_viz_frame_st <- st_transform(isochrone_viz_frame_sf, crs = 4326)
 
 ```
@@ -426,7 +393,7 @@ isochrone_viz_frame_st <- st_transform(isochrone_viz_frame_sf, crs = 4326)
 
 ```{r}
 # Mapping function
-map_maker_scores <- function(data, amenity, weight, nearest_n) {
+map_maker_scores <- function(data, amenity, weight, nearest_n, output_dir) {
   
   amn_name <- amenity %>%
                 str_to_title() %>%
@@ -434,8 +401,7 @@ map_maker_scores <- function(data, amenity, weight, nearest_n) {
                 str_replace('And', 'and') %>%
                 str_replace('/Performance', '')
   
-  print('Current Map:')
-  print(glue('{amn_name} Transit Accessibility - Weighted ({weight}) - Nearest Amenities ({str_to_upper(nearest_n)})'))
+  print(paste('Current Map:', glue('{amn_name} - wt({weight}) - n({str_to_upper(nearest_n)})')))
 
   # subset info
   polyg_subset <- data[data$type == amenity & data$weight == weight & data$nearest_n == nearest_n, ]
@@ -449,10 +415,10 @@ map_maker_scores <- function(data, amenity, weight, nearest_n) {
   
   # popup # percentile(score_vec),
   percentile <- ecdf(score_vec)
-  p_popup <- paste0("<h2>Accessibility Percentile: ", round(percentile(score_vec), 2)*100, '%',"</h2>", 
-                      "<br><strong>Block ID: ", polyg_subset$DBUID,"</strong>",
-                      "<br><strong>Block Population: ", polyg_subset$pop,"</strong>",
-                      "<br>Raw Score: ", round(score_vec, 2))
+  p_popup <- paste0("<strong>Accessibility Percentile: ", round(percentile(score_vec), 2)*100, '%',"</strong>", 
+                    "<br><strong>Block Population: ", polyg_subset$pop,"</strong>",
+                    "<br><br>Block ID: ", polyg_subset$DBUID,
+                    "<br>Raw Score: ", round(score_vec, 2))
         
   map <- leaflet(data = polyg_subset) %>%
       addPolygons(
@@ -467,16 +433,16 @@ map_maker_scores <- function(data, amenity, weight, nearest_n) {
                 values=~score_vec,  # value to be passed to palette function
                 title = glue('{amn_name} Transit Access'))
   
-  file_name <- glue('{amn_name} Transit Accessibility - Weighted ({weight}) - Nearest Amenities ({str_to_upper(nearest_n)})')
+  file_name <- glue('{amn_name} - wt({weight}) - n({str_to_upper(nearest_n)})')
   
   map
-  mapshot(map, url = paste0(getwd(), glue("/New HTML Maps/{file_name}.html")))
+  #mapshot(map, url = paste0(getwd(), glue("{output_dir/{file_name}.html")))
 
 }
 
 
 
-map_maker_isochrone <- function(data, amenity) {
+map_maker_isochrone <- function(data, amenity, output_dir) {
   
   amn_name <- amenity %>%
                 str_to_title() %>%
@@ -484,8 +450,7 @@ map_maker_isochrone <- function(data, amenity) {
                 str_replace('And', 'and') %>%
                 str_replace('/Performance', '')
   
-  print('Current Map:')
-  print(glue('{amn_name} Transit Isochrone'))
+  print(paste('Current Map:', glue('{amn_name} - isochrone')))
 
   # subset info
   polyg_subset <- data[data$type == amenity, ]
@@ -499,10 +464,8 @@ map_maker_isochrone <- function(data, amenity) {
     levels = sort(unique(polyg_subset$time_groups))
     )
 
-  p_popup <- paste0("<h2>Time to the nearest:</h2>", 
-                      "<br><strong>", amn_name,"</strong>",
-                      "<br>",
-                      "<br> = ", time_groups)
+  p_popup <- paste0("<strong>Nearest:<strong>", amn_name,"</strong>", 
+                    "<br><strong>Travel Time: ", time_groups, "</strong>")
         
   map <- leaflet(data = polyg_subset) %>%
       addPolygons(
@@ -518,9 +481,9 @@ map_maker_isochrone <- function(data, amenity) {
                 title = glue('{amn_name} Transit Access'))
   
   file_name <- glue('{amn_name} Transit Isochrone')
-  
+
   map
-  mapshot(map, url = paste0(getwd(), glue("/New HTML Maps/{file_name}.html")))
+  #mapshot(map, url = paste0(getwd(), glue("{output_dir/{file_name}.html")))
 
 }
 
@@ -533,10 +496,9 @@ map_maker_isochrone <- function(data, amenity) {
 
 ```{r}
 
-sum(is.na(isochrone_viz_frame_st$type))
 map_maker_scores(scores_viz_frame_st, 'gallery',"no","1")
-map_maker_isochrone(data = isochrone_viz_frame_st,"museum" )
-sub
+map_maker_isochrone(data = isochrone_viz_frame_st, "museum" )
+
 ```
 
 

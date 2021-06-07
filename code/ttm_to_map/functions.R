@@ -76,6 +76,61 @@ sum_score_fxn <- function(df, nearest_n = NULL, weight = FALSE, log_normalize_sc
   df
 }
 
+
+##############################
+## NA SUBSTITUTION FUNCTIONS
+##############################
+
+# function for NA grid expansion 
+NA_grid_maker <- function(id, df, isochrone = FALSE) {
+  all_amenities <- as.character(unique(df$type))
+  # get missing amenities by indexing the fromId and keeping only unique types
+  missing_amenities <- setdiff(all_amenities, unique(df$type[df$fromId == id]))
+  if (isochrone == FALSE) {
+    # create NA rows to append via expand.grid (creates a row for every factor combination)
+    NA_rows <- expand.grid('fromId' = id,
+                         'type' = missing_amenities,
+                         'weight' = as.character(unique(df$weight)),
+                         'nearest_n' = as.character(unique(df$nearest_n)),
+                         'score' = NA, 
+                         stringsAsFactors = TRUE)
+  } else {
+    # create NA rows to append via expand.grid (creates a row for every factor combination)
+    NA_rows <- expand.grid('fromId' = id,
+                         'type' = missing_amenities,
+                         'time_groups' = NA, 
+                         stringsAsFactors = TRUE)
+  }
+  NA_rows
+}
+
+# function for actually filling data.tables with NA values
+NA_table_filler <- function(df, custom_idx = NULL, isochrone = FALSE) {
+  # count each fromId occurence
+  fromId_counts <- df %>% group_by(fromId) %>% mutate(n = n())
+
+  if (is.null(custom_idx)) {
+    # create a fromId array using Ids that don't meet the [x] count requirement
+    id_arr <- array(unique(fromId_counts[fromId_counts$n < x, ]$fromId))
+  } else {
+    id_arr <- custom_idx
+  }
+
+  # get rows
+  filler_rows <- rbindlist(apply(id_arr, MARGIN = 1, FUN = NA_grid_maker, df = df, isochrone = isochrone))
+  # append and order
+  df <- rbindlist(list(df, filler_rows), use.names = TRUE) 
+  
+  if (isochrone == FALSE) {
+    df <- df %>% arrange(fromId, type, nearest_n, weight)
+  } else {
+    df <- df %>% arrange(fromId, type)
+  }
+  
+  df
+}
+
+
 ##############################
 ## VISUALIZATION FUNCTIONS
 ##############################
@@ -96,4 +151,103 @@ plot_densities <- function(score_frame1, score_frame2, titl1 = 'Plot 1', titl2 =
         theme(aspect.ratio = 0.3)+
         ggtitle(titl2)
   gridExtra::grid.arrange(x, y)
+}
+
+# Mapping function for score tables
+map_maker_scores <- function(data, amenity, weight, nearest_n, output_dir, view_map = FALSE) {
+  
+  amn_name <- amenity %>%
+                str_to_title() %>%
+                str_replace_all('Or', 'or') %>%
+                str_replace('And', 'and') %>%
+                str_replace('/Performance', '')
+
+  file_name <- glue('{amn_name} - wt({weight}) - n({str_to_upper(nearest_n)})')
+  print(paste('Current Map:', file_name))
+
+  # subset info
+  polyg_subset <- data[data$type == amenity & data$weight == weight & data$nearest_n == nearest_n, ]
+  
+  # score vector
+  score_vec <- polyg_subset$score
+  
+  # colour palette 
+  Rd2Gn <- c("#e30606", "#fd8d3c", "#ffe669", "#cdff5e", "#64ed56")
+  pal_fun <- colorQuantile(palette = Rd2Gn, NULL, n = 5)
+  
+  # popup # percentile(score_vec),
+  percentile <- ecdf(score_vec)
+  p_popup <- paste0("Accessibility Percentile: <strong>", round(percentile(score_vec), 2)*100, '%',"</strong>", 
+                    "<br>Block Population: <strong>", polyg_subset$pop,"</strong>",
+                    "<br><br>Block ID: ", polyg_subset$DBUID,
+                    "<br>Raw Score: ", round(score_vec, 2))
+        
+  map <- leaflet(data = polyg_subset) %>%
+      addPolygons(
+        stroke = FALSE,  # remove polygon borders
+        fillColor = ~pal_fun(score_vec), # set fill colour with pallette fxn from aboc
+        fillOpacity = 0.6, smoothFactor = 0.5, # aesthetics
+        popup = p_popup) %>% # add message popup to each block
+      addTiles() %>%
+      setView(lng = -122.8, lat = 49.2, zoom = 11) %>%
+      addLegend("bottomleft",  # location
+                pal=pal_fun,    # palette function
+                values=~score_vec,  # value to be passed to palette function
+                title = glue('{amn_name} Transit Access'))
+    
+  if (view_map == TRUE) {
+    return(map)
+  } else {
+    mapshot(map, url = glue("{getwd()}/{output_dir}/{file_name}.html"))
+  }
+  
+}
+
+
+# Mapping function for isochrone tables
+map_maker_isochrone <- function(data, amenity, output_dir, view_map = FALSE) {
+  
+  amn_name <- amenity %>%
+                str_to_title() %>%
+                str_replace_all('Or', 'or') %>%
+                str_replace('And', 'and') %>%
+                str_replace('/Performance', '')
+  
+  file_name <- glue('{amn_name} Transit Isochrone')
+  print(paste('Current Map:', file_name))
+
+  # subset info
+  polyg_subset <- data[data$type == amenity, ]
+  
+  # score vector
+  time_groups <- polyg_subset$time_groups
+  
+  # colour palette 
+  pal_fun <- colorFactor(
+    palette = c("#3ef000", "#c5eb00", "#fbff00", "#e9cb00", "#e78600", "#e44200", "#e20000"),
+    levels = sort(unique(polyg_subset$time_groups))
+    )
+
+  p_popup <- paste0("Nearest: <strong>", amn_name,"</strong>", 
+                    "<br>Travel Time: <strong><", time_groups, " minutes</strong>")
+        
+  map <- leaflet(data = polyg_subset) %>%
+      addPolygons(
+        stroke = FALSE,  # remove polygon borders
+        fillColor = ~pal_fun(time_groups), # set fill colour with pallette fxn from aboc
+        fillOpacity = 0.7, smoothFactor = 0.5, # aesthetics
+        popup = p_popup) %>% # add message popup to each block
+      addTiles() %>%
+      setView(lng = -122.8, lat = 49.2, zoom = 11) %>%
+      addLegend("bottomleft",  # location
+                pal=pal_fun,    # palette function
+                values=~time_groups,  # value to be passed to palette function
+                title = glue('{amn_name} Transit Access'))
+  
+  if (view_map == TRUE) {
+    return(map)
+  } else {
+    mapshot(map, url = glue("{getwd()}/{output_dir}/{file_name}.html"))
+  }
+  
 }

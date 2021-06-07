@@ -29,7 +29,7 @@ Place your weekly status updates in this folder before your weekly meeting.
 - Developed functions to re-add NA values in the long score and isochrone frames. That way NA blocks can also be visualized (Luka)
 - Generated isochrone data from the travel time matrix (Yuxuan)
 - Cleaned repository of all unused data/files and moved to archive (Luka)
-- Code merge: combined scripts for manipulating the travel time matrix (cleaning, scoring, etc.) and the scripts for visualization and output to have 1 main script for creating the HTML map renders.
+- Code merge: combined scripts for manipulating the travel time matrix (cleaning, scoring, etc.) and the scripts for visualization and output to have 1 main script for creating the HTML map renders. (Luka, Yuxuan)
 - Prepared presentation slides (All)
 - Updated the scoring function (Rain, Luka)
 
