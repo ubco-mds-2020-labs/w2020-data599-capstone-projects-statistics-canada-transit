@@ -21,6 +21,10 @@ Place your weekly status updates in this folder before your weekly meeting.
 ### Week 6 (June 7 - June 11)
 
 ### Week 5 (May 31 - June 4)
+- Worked oon publishing dashboard (Graham)
+- Added Kepler to dashboard (Graham)
+- Converted dashboard to use HTMLs instead of Leaflet maps (Graham)
+- Researched method to calculate transit efficiency scores (Graham)
 - Dashboard performance upgrade: added feature to call on pre-rendered HTML maps as opposed to performing computations on the fly. (Luka)
 - Developed functions to re-add NA values in the long score and isochrone frames. That way NA blocks can also be visualized (Luka)
 - Generated isochrone data from the travel time matrix (Yuxuan)
@@ -31,6 +35,7 @@ Place your weekly status updates in this folder before your weekly meeting.
 
 ### Week 4 (May 24 - May 28)
 - Created an outline for the final report (All)
+- Published dashboard draft (Graham)
 - Explored downtown public library outlier point. Found that slight modifications of the coordinates fixes the problem which still has an unknown underlying cause (Luka)
 - Created HTML map renders for all score sets using a special score import function (Luka)
 - Team meeting and presentation preparation (All)
