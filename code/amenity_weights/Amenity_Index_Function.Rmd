@@ -25,15 +25,28 @@ library(hablar)
 
 Requires two dataset; *google_reviews_poi_with_hours.csv* and *vancouver_facilities_2.csv*
 ```{R message=FALSE, warning=FALSE}
-review_poi<- read_csv("~/Desktop/MDS/data599/google-reviews-arts/google_reviews_poi_with_hours.csv")
-van_poi<-read_csv("~/Desktop/MDS/data599/w2020-data599-capstone-projects-statistics-canada-transit/data/clean/vancouver_facilities_2.csv")
+
+### set w2020-data599 as working directory
+library_index<-read_csv("data/amenity_weights/Library_weights.csv")
+review_poi<-read_csv("data/clean/google_reviews_poi_with_hours.csv")
+van_poi<-read_csv("data/clean/vancouver_facilities_2.csv")
+
+
+# review_poi<- read_csv("~/Desktop/MDS/data599/google-reviews-arts/google_reviews_poi_with_hours.csv")
+# van_poi<-read_csv("~/Desktop/MDS/data599/w2020-data599-capstone-projects-statistics-canada-transit/data/clean/vancouver_facilities_2.csv")
 ```
+
 
 
 ```{R}
 #Merge review dataset with vancouver point of interest
 left_join(review_poi,van_poi,by=c("poi_name"="name"))%>%distinct()->merged_data
+
 ```
+
+
+
+
 
 **Convert the data to numeric **
 ```{R message=FALSE, warning=FALSE}
@@ -44,7 +57,6 @@ merged_data%>% convert(num(Rating, Total_Review,open_days,Total_hours))->merged_
 **Number of amenity in each type of arts facility **
 ```{R}
 merged_data%>%group_by(type)%>%count()
-
 ```
 Our primary interest would be gallery(n=99),library(n=86),museum(n=92) and theatre(n=75)
 
@@ -52,12 +64,13 @@ Our primary interest would be gallery(n=99),library(n=86),museum(n=92) and theat
 
 ##### visualize missing value 
 ```{R}
-merged_data%>%select(poi_name,Name,open_days,Total_hours,Rating,Total_Review)->df
+merged_data%>%select(poi_name,Name,open_days,Total_hours,Rating,Total_Review,lat,lon)->df
 
 colnames(df)
-colnames(df) <- c("POI Name", "Google Place Name","Open Days","Open Hours","Rating","Total Review")
+colnames(df) <- c("POI Name", "Google Place Name","Open Days","Open Hours","Rating","Total Review","lat","lon")
 df[df == 0] <- NA
 missing_percentage<-colMeans(is.na(df))
+
 missing.values <- df%>%
   gather(key = "key", value = "val") %>%
   mutate(isna = is.na(val)) %>%
@@ -89,6 +102,7 @@ percentage.plot <- missing.values %>%
              'Variable', y = "% of missing values")
 
 p<-percentage.plot+ theme_minimal()
+p
 
 ggsave("amenity_missing.png", width = 5, height = 2)
 ```
@@ -100,6 +114,8 @@ Weight index function takes two arguments, *data* and *type*. *data* should cont
 
 
 $$Normalize_i = \frac{Value_i-min(Value)}{max(Value)-min(Value)}$$
+
+**weight index funciton with plot**
 ```{R}
 weight_index<-function(data,Amenity="museuem"){
   data%>%filter(type==Amenity)->poi_type
@@ -177,6 +193,36 @@ Norm_poi%>%mutate(Index=(open_days+Total_hours+Rating+Total_Review)/4)->Norm_poi
 
 ```
 
+**weight index function without plots**
+
+```{R}
+weights<-function(data,Amenity="museuem"){
+  data%>%filter(type==Amenity)->poi_type
+  # select relevent features 
+  poi_type%>%select(poi_name,open_days,Total_hours,Rating,Total_Review,lat,lon)->poi_type
+  # check number of missing data
+  poi_type[poi_type == 0] <- NA
+  missing_percentage<-colMeans(is.na(poi_type))
+  
+  # fill NA with column mean 
+  poi_type<-na_mean(poi_type)
+
+  # normalize the features 
+  normalize <- function(x) {
+return ((x - min(x)) / (max(x) - min(x)))
+  }
+  
+  Norm_poi<-poi_type%>%mutate_if(is.numeric, normalize)
+  
+  # Navie weighted index 
+  Norm_poi%>%mutate(Index=(open_days+Total_hours+Rating+Total_Review)/4)->Norm_poi
+  return(Norm_poi)
+
+  
+}
+
+```
+
 
 #### Select the point of interest 
 
@@ -185,17 +231,35 @@ Norm_poi%>%mutate(Index=(open_days+Total_hours+Rating+Total_Review)/4)->Norm_poi
 poi_int<-c("museum","library or archives","gallery","theatre/performance and concert hall")
 
 
-df<-weight_index(merged_data,Amenity="museum")
-df<-df$data[FALSE,]
+df<-weights(merged_data,Amenity="museum")%>%as.data.frame()
+colnames(df)
+
+df<-df[F,]
+
+
 
 for(name in poi_int){
-  tem<-invisible(weight_index(merged_data,Amenity=name))
-  df<-rbind(invisible(tem$data),df)
+  tem<-weights(merged_data,Amenity=name)
+  df<-rbind(invisible(tem),df)
 }
 
 
 head(df)
 ```
+
+
+
+**merge score with library**
+
+```{R}
+
+# convert lat and lon into numeric 
+
+df%>% convert(num(at,lon))->df
+left_join(df,)
+library_index
+```
+
 
 ##### Export csv 
 poi_index csv file contains geo information (lat and lon) as well the accessibility index. To be noticed, it only contians 4 amenity type ("museum","library or archives","gallery","theatre/performance and concert hall")
