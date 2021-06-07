@@ -19,6 +19,9 @@ sections:
 ## 0) Useful Libraries
 
 ```{r message=FALSE, warning=FALSE, include=TRUE}
+# import custom scoring, cleaning, and visualization functions
+source('functions.R')
+
 # wrangling/convenience
 library(tidyverse)
 library(glue)
@@ -239,8 +242,6 @@ values, the visualizations will be identical.
 
 
 ```{r message=FALSE, warning=FALSE}
-# import score functions
-source('functions.R')
 
 score_list <- list()
 score_list_weighted<-list()
@@ -392,138 +393,66 @@ isochrone_viz_frame_st <- st_transform(isochrone_viz_frame_sf, crs = 4326)
 
 
 ```{r}
-# Mapping function
-map_maker_scores <- function(data, amenity, weight, nearest_n, output_dir) {
-  
-  amn_name <- amenity %>%
-                str_to_title() %>%
-                str_replace_all('Or', 'or') %>%
-                str_replace('And', 'and') %>%
-                str_replace('/Performance', '')
-  
-  print(paste('Current Map:', glue('{amn_name} - wt({weight}) - n({str_to_upper(nearest_n)})')))
-
-  # subset info
-  polyg_subset <- data[data$type == amenity & data$weight == weight & data$nearest_n == nearest_n, ]
-  
-  # score vector
-  score_vec <- polyg_subset$score
-  
-  # colour palette 
-  Rd2Gn <- c("#e30606", "#fd8d3c", "#ffe669", "#cdff5e", "#64ed56")
-  pal_fun <- colorQuantile(palette = Rd2Gn, NULL, n = 5)
-  
-  # popup # percentile(score_vec),
-  percentile <- ecdf(score_vec)
-  p_popup <- paste0("<strong>Accessibility Percentile: ", round(percentile(score_vec), 2)*100, '%',"</strong>", 
-                    "<br><strong>Block Population: ", polyg_subset$pop,"</strong>",
-                    "<br><br>Block ID: ", polyg_subset$DBUID,
-                    "<br>Raw Score: ", round(score_vec, 2))
-        
-  map <- leaflet(data = polyg_subset) %>%
-      addPolygons(
-        stroke = FALSE,  # remove polygon borders
-        fillColor = ~pal_fun(score_vec), # set fill colour with pallette fxn from aboc
-        fillOpacity = 0.6, smoothFactor = 0.5, # aesthetics
-        popup = p_popup) %>% # add message popup to each block
-      addTiles() %>%
-      setView(lng = -122.8, lat = 49.2, zoom = 11) %>%
-      addLegend("bottomleft",  # location
-                pal=pal_fun,    # palette function
-                values=~score_vec,  # value to be passed to palette function
-                title = glue('{amn_name} Transit Access'))
-  
-  file_name <- glue('{amn_name} - wt({weight}) - n({str_to_upper(nearest_n)})')
-  
-  map
-  #mapshot(map, url = paste0(getwd(), glue("{output_dir/{file_name}.html")))
-
-}
-
-
-
-map_maker_isochrone <- function(data, amenity, output_dir) {
-  
-  amn_name <- amenity %>%
-                str_to_title() %>%
-                str_replace_all('Or', 'or') %>%
-                str_replace('And', 'and') %>%
-                str_replace('/Performance', '')
-  
-  print(paste('Current Map:', glue('{amn_name} - isochrone')))
-
-  # subset info
-  polyg_subset <- data[data$type == amenity, ]
-  
-  # score vector
-  time_groups <- polyg_subset$time_groups
-  
-  # colour palette 
-  pal_fun <- colorFactor(
-    palette = c("#3ef000", "#c5eb00", "#fbff00", "#e9cb00", "#e78600", "#e44200", "#e20000"),
-    levels = sort(unique(polyg_subset$time_groups))
-    )
-
-  p_popup <- paste0("<strong>Nearest:<strong>", amn_name,"</strong>", 
-                    "<br><strong>Travel Time: ", time_groups, "</strong>")
-        
-  map <- leaflet(data = polyg_subset) %>%
-      addPolygons(
-        stroke = FALSE,  # remove polygon borders
-        fillColor = ~pal_fun(time_groups), # set fill colour with pallette fxn from aboc
-        fillOpacity = 0.7, smoothFactor = 0.5, # aesthetics
-        popup = p_popup) %>% # add message popup to each block
-      addTiles() %>%
-      setView(lng = -122.8, lat = 49.2, zoom = 11) %>%
-      addLegend("bottomleft",  # location
-                pal=pal_fun,    # palette function
-                values=~time_groups,  # value to be passed to palette function
-                title = glue('{amn_name} Transit Access'))
-  
-  file_name <- glue('{amn_name} Transit Isochrone')
-
-  map
-  #mapshot(map, url = paste0(getwd(), glue("{output_dir/{file_name}.html")))
-
-}
-
+# test if curious
+#map_maker_scores(scores_viz_frame_st, 'gallery',"no","1", view_map = TRUE)
+#map_maker_isochrone(data = isochrone_viz_frame_st, "museum", view_map = TRUE)
 
 ```
-
-
-
-
-
-```{r}
-
-map_maker_scores(scores_viz_frame_st, 'gallery',"no","1")
-map_maker_isochrone(data = isochrone_viz_frame_st, "museum" )
-
-```
-
 
 
 ## 5) Map HTML Exports
 
 ```{r}
 # exclue NA in type
-type_name<-unique(scores_viz_frame_st$type)
-type_name
+type_name <- unique(scores_viz_frame_st$type)
+
 for (amenity in type_name) { 
   
   # 4 isochrone maps
-  map_maker_isochrone(data = isochrone_viz_frame_st, amenity)
+  map_maker_isochrone(data = isochrone_viz_frame_st, amenity, output_dir = '../../data/html_maps/isochrone_maps')
 
   for (weight in unique(scores_viz_frame_st$weight)) {
     for (nearest_n in unique(scores_viz_frame_st$nearest_n)) {
       
-      # 16 others
-      map_maker_scores(data = scores_viz_frame_st, amenity, weight, nearest_n)
+      # 32 others
+      map_maker_scores(data = scores_viz_frame_st, amenity, weight, nearest_n,
+                       output_dir = '../../data/html_maps/score_maps')
       
     }
   }
 }
 ```
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 
