@@ -14,15 +14,22 @@ Place your weekly status updates in this folder before your weekly meeting.
 
 ***
 
-### Week 7 (June 21 - June 25)
+### Week 8 (June 21 - June 25)
 
-### Week 6 (June 14 - June 18)
+### Week 7 (June 14 - June 18)
 
-### Week 5 (June 7 - June 11)
+### Week 6 (June 7 - June 11)
 
-### Week 4 (May 31 - June 4)
+### Week 5 (May 31 - June 4)
+- Dashboard performance upgrade: added feature to call on pre-rendered HTML maps as opposed to performing computations on the fly. (Luka)
+- Developed functions to re-add NA values in the long score and isochrone frames. That way NA blocks can also be visualized (Luka)
+- Generated isochrone data from the travel time matrix (Yuxuan)
+- Cleaned repository of all unused data/files and moved to archive (Luka)
+- Code merge: combined scripts for manipulating the travel time matrix (cleaning, scoring, etc.) and the scripts for visualization and output to have 1 main script for creating the HTML map renders.
+- Prepared presentation slides (All)
+- Updated the scoring function (Rain, Luka)
 
-### Week 3 (May 24 - May 28)
+### Week 4 (May 24 - May 28)
 - Created an outline for the final report (All)
 - Explored downtown public library outlier point. Found that slight modifications of the coordinates fixes the problem which still has an unknown underlying cause (Luka)
 - Created HTML map renders for all score sets using a special score import function (Luka)
@@ -30,7 +37,7 @@ Place your weekly status updates in this folder before your weekly meeting.
 - Created a general amenity index function which will return the amenity weights for any type of interest(Yuxuan)
 - Collected and merged library information - total area, number of annual visitors, volume of physical copies (Rain)
 
-### Week 2 (May 17 - May 21)
+### Week 3 (May 17 - May 21)
 - Created visualization of scores in Vancouver using python (Graham)
 - Researched R Shiny and Dash for dahsboard visualizations (Graham)
 - Created visualization of scores for different DBs in GVA using local Kepler (Rain)
@@ -43,7 +50,7 @@ Place your weekly status updates in this folder before your weekly meeting.
 - Generated opening days and hours data for point of interests from google place (Yuxuan)
 - Built POI (Museum) Index weight using the google place data (Yuxuan)
 
-### Week 1 (May 10 - May 14)
+### Week 2 (May 10 - May 14)
 - Removed duplicate travel time matrix csvs (Luka)
 - Wrote an initial DB score computation script and ran it using 3k of 15k origins at 36 departure times (generated a 36 billion row dataframe) (Luka)
 - Computed travel time matrix and created visualization using UrbanAccess with Pandana (Rain)
@@ -54,7 +61,7 @@ Place your weekly status updates in this folder before your weekly meeting.
 - Software research and exploration. See Wiki links in Taiga.io (Yuxuan + Luka)
 - CDB and ODACF data filtering (Graham + Rain)
 
-### Week 0 (May 3 - May 7)
+### Week 1 (May 3 - May 7)
 - Setting up Vancouver OSM and GTFS network on Open Trip Planner (Luka)
 - Setting up Weekly Task file (Rain)
 - Proposal and Statement of Work (All)
