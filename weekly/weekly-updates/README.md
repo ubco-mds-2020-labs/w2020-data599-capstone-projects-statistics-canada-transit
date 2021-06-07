@@ -32,6 +32,7 @@ Place your weekly status updates in this folder before your weekly meeting.
 - Code merge: combined scripts for manipulating the travel time matrix (cleaning, scoring, etc.) and the scripts for visualization and output to have 1 main script for creating the HTML map renders. (Luka, Yuxuan)
 - Prepared presentation slides (All)
 - Updated the scoring function (Rain, Luka)
+- Added the isochrone map on dashboard (Yuxuan)
 
 ### Week 4 (May 24 - May 28)
 - Created an outline for the final report (All)

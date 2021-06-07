@@ -90,6 +90,12 @@ server <- function(input, output){
         return(glue('/{html_file}.html'))
     })
     
+    getPage_kep <- reactive({ 
+        amn_name <- input$type_iso
+        html_file <-  glue('{amn_name} all_type_Kepler')
+        return(glue('/{html_file}.html'))
+    })
+    
     getPage_iso <- reactive({ 
         amn_name <- input$type_iso
         html_file <-  glue('{amn_name} Transit Isochrone')
@@ -105,7 +111,7 @@ server <- function(input, output){
     
     # dynamic file calling
     output$kepler <- renderUI({
-        tags$iframe(seamless="seamless", src=paste0('maps', "/all_type_Kepler.html"),
+        tags$iframe(seamless="seamless", src=paste0('maps', getPage_kep()),
                     width='100%',
                     height='1250') # dynamic height (100%) doesn't work so I set it manually
     })
