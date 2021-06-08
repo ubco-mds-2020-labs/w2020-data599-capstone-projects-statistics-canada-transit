@@ -40,7 +40,7 @@ r5r_core <- setup_r5(data_path = getwd(), verbose = FALSE)
 ```{r, warning=FALSE}
 
 # Dissemination Blocks
-# origins <- fread(file.path("../../data/clean", "vancouver_db.csv"))
+
 origins <- read.csv("vancouver_db.csv")
 paste('Origin Rows: ', nrow(origins))
 
@@ -146,7 +146,9 @@ print('COMPLETED')
 ```
 
 ```{r}
-list1 <- 7:9
+# For peak time
+
+list1 <- 7:10
 t1 <- c()
 for (i in 1:length(hour5)) {
   
@@ -168,7 +170,10 @@ saveRDS(TTM5, file = "TTM5_PEAK.rds")
 
 
 ```{r}
-list1 <- 17:19
+# For 12 hour range (7am to 7pm)
+
+
+list1 <- 7:19
 t1 <- c()
 for (i in 1:length(hour5)) {
   
@@ -200,7 +205,8 @@ usethis::edit_r_environ("project")
 # aggregate on each unique transit trip to compute the avg time
 # time to the same destination
 
-# TTM5 <- readRDS("TTM5.rds")
+TTM5 <- readRDS("TTM5.rds")
+
 
 TTM_agg <- TTM5 %>%
            group_by(t1, fromId, toId) %>% 
@@ -209,7 +215,6 @@ TTM_agg <- TTM5 %>%
            )
 head(TTM_agg)
 ```
-
 
 ```{r}
 # Export for later manipulation
@@ -226,96 +231,179 @@ ttm_719 <- rbind(ttm_716, TTM_agg)
 write.csv(ttm_719, "ttm5_719.csv", row.names = FALSE)
 ```
 
+
 ### Saturday
 
 ```{r}
+all_ttms6 <- list()
+hour6 <- c()
 
+for (time in 7:19) {        # 7 to 19 hours
+    
+  departure_datetime6 <- as.POSIXct(glue("15-05-2021 {time}:00:00"), format="%d-%m-%Y %H:%M:%S")
+  
+  ttm6 <- travel_time_matrix(r5r_core = r5r_core,
+                            origins = origins,
+                            destinations = destinations,
+                            departure_datetime = departure_datetime6,
+                            time_window = 30,
+                          
+                            # constrains
+                            mode = mode,
+                            max_walk_dist = max_walk_dist,
+                            max_trip_duration = max_trip_duration,
+                            max_rides = max_rides,
+                            verbose = FALSE)
+  
+  hour6 <- append(hour6, nrow(ttm6))
+    
+  all_ttms6 <-  list.append(all_ttms6, ttm6) 
+    
+  
+}
+
+# Fast way to bind all data.frames
+TTM6 <- rbindlist(all_ttms6)
+
+print('COMPLETED')
 ```
+
+```{r}
+# For peak time range (7am to 10am)
+
+
+list1 <- 7:10
+t1 <- c()
+for (i in 1:length(hour6)) {
+  
+  t <- rep(list1[i], times = hour6[i])
+  t1 <- append(t1, t)
+}
+
+t1 <- paste0("0", t1)
+
+t2 <- mapply(function(x,y) paste0(rep(x,y), collapse = ""), 0, 4 - nchar(t1))
+t1 <- paste0(t1, t2)
+
+t1 <- format(strptime(t1, format="%H%M"), format = "%H:%M")
+
+TTM6 <- cbind(t1, TTM6)
+head(TTM6)
+saveRDS(TTM6, file = "TTM6_PEAK.rds")
+```
+
+
+```{r}
+# For the 12 hour range (7am to 7pm)
+
+list1 <- 7:19
+t1 <- c()
+for (i in 1:length(hour6)) {
+  
+  t <- rep(list1[i], times = hour6[i])
+  t1 <- append(t1, t)
+}
+
+t0 <- t1[1:sum(hour6[1:3])]
+
+t0 <- paste0("0", t0)
+t1[1:sum(hour6[1:3])] <- t0
+
+t2 <- mapply(function(x,y) paste0(rep(x,y), collapse = ""), 0, 4 - nchar(t1))
+t1 <- paste0(t1, t2)
+
+t1 <- format(strptime(t1, format="%H%M"), format = "%H:%M")
+
+TTM6 <- cbind(t1, TTM6)
+head(TTM6)
+saveRDS(TTM6, file = "TTM6.rds")
+```
+
 
 ### Sunday
 
 ```{r}
+all_ttms7 <- list()
+hour7 <- c()
 
-```
-
-```{r}
-# default walk speed = 3.6 km/h
-
-all_ttms <- list()
-
-for (day in 14:16) {          # May 14=Fri, 15=Sat, 16=Sun
-  for (time in 7:19) {        # 7 to 19 hours
+for (time in 7:19) {        # 7 to 19 hours
     
-    departure_datetime <- as.POSIXct(glue("{day}-05-2021 {time}:00:00"), format="%d-%m-%Y %H:%M:%S")
-    
-    ttm <- travel_time_matrix(r5r_core = r5r_core,
-                          origins = origins,
-                          destinations = destinations,
-                          departure_datetime = departure_datetime,
-                          time_window = 30,
+  departure_datetime7 <- as.POSIXct(glue("16-05-2021 {time}:00:00"), format="%d-%m-%Y %H:%M:%S")
+  
+  ttm7 <- travel_time_matrix(r5r_core = r5r_core,
+                            origins = origins,
+                            destinations = destinations,
+                            departure_datetime = departure_datetime7,
+                            time_window = 30,
                           
-                          # constrains
-                          mode = mode,
-                          max_walk_dist = max_walk_dist,
-                          max_trip_duration = max_trip_duration,
-                          max_rides = max_rides,
-                          verbose = FALSE)
+                            # constrains
+                            mode = mode,
+                            max_walk_dist = max_walk_dist,
+                            max_trip_duration = max_trip_duration,
+                            max_rides = max_rides,
+                            verbose = FALSE)
+  
+  hour7 <- append(hour7, nrow(ttm7))
     
-    all_ttms <-  list.append(all_ttms, ttm) # very slow: rbind(all_ttm, ttm)
+  all_ttms7 <-  list.append(all_ttms7, ttm7) 
     
-    print(glue('Progress: {round(((day-14)*12 + time-6)/37*100, 1)}%'))
-  }
+  
 }
 
 # Fast way to bind all data.frames
-TTM <- rbindlist(all_ttms)
+TTM7 <- rbindlist(all_ttms7)
 
 print('COMPLETED')
+```
 
-summary(TTM)
+```{r}
+# For peak time range (7am to 10am)
+
+
+list1 <- 7:10
+t1 <- c()
+for (i in 1:length(hour7)) {
+  
+  t <- rep(list1[i], times = hour7[i])
+  t1 <- append(t1, t)
+}
+
+t1 <- paste0("0", t1)
+
+t2 <- mapply(function(x,y) paste0(rep(x,y), collapse = ""), 0, 4 - nchar(t1))
+t1 <- paste0(t1, t2)
+
+t1 <- format(strptime(t1, format="%H%M"), format = "%H:%M")
+
+TTM7 <- cbind(t1, TTM7)
+head(TTM7)
+saveRDS(TTM7, file = "TTM7_PEAK.rds")
 ```
 
 
-### 5. Aggregate Travel Time Matrix 
-
 ```{r}
-# aggregate on each unique transit trip to compute the avg time
-# time to the same destination
-TTM_agg <- TTM %>%
-           group_by(fromId, toId) %>% 
-           summarise(
-             avg_time = mean(travel_time), 
-             sd_time = sd(travel_time)
-           )
+# For the 12 hour range (7am to 7pm)
 
-paste('First aggregation:')
-summary(TTM_agg)
+list1 <- 7:19
+t1 <- c()
+for (i in 1:length(hour7)) {
+  
+  t <- rep(list1[i], times = hour7[i])
+  t1 <- append(t1, t)
+}
 
-```
+t0 <- t1[1:sum(hour7[1:3])]
 
+t0 <- paste0("0", t0)
+t1[1:sum(hour7[1:3])] <- t0
 
+t2 <- mapply(function(x,y) paste0(rep(x,y), collapse = ""), 0, 4 - nchar(t1))
+t1 <- paste0(t1, t2)
 
-### 6. Fix Odd Values in sd_time
+t1 <- format(strptime(t1, format="%H%M"), format = "%H:%M")
 
-```{r}
-
-# replace NAs with median value
-# even if these are rare trips (1 trip means NA in sd)
-# the bus still probably comes on a regular schedule with uncertainty like most stops
-median_sd <- median(TTM_agg$sd_time, na.rm=TRUE)
-TTM_agg <- TTM_agg %>% replace_na(list('sd_time'=median_sd))
-
-# replace <=1 with 1 to avoid large or infinity computations later on
-TTM_agg$sd_time[(TTM_agg$sd_time <= 1)] <-  1
-
-paste('Clean TTM Aggregation:')
-summary(TTM_agg)
-```
-
-### 7. Export
-```{r}
-# Export for later manipulation
-write.csv(TTM_agg, "../../data/clean/ttm.csv", row.names = FALSE)
-
+TTM7 <- cbind(t1, TTM7)
+head(TTM7)
+saveRDS(TTM7, file = "TTM7.rds")
 ```
 
