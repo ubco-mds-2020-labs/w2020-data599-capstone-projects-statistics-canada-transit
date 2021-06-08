@@ -8,9 +8,13 @@ weight_factor <- c('No', 'Yes')
 nearest_n_factor <- c('1', '2', '3', 'ALL')
 
 # Directory path
-#map_dir <- "/Upd_HTML_Maps"      #"../../data/Upd_HTML_Maps/"
-map_dir <- "/New HTML Maps"
-addResourcePath('maps', paste0(getwd(), map_dir)) # 'maps' is the name of the resource
+isomap_dir <- "/isochrone_maps"
+kepmap_dir <- "/kepler_maps"
+scoremap_dir <- "/score_maps"
+addResourcePath('isomaps', paste0(getwd(), isomap_dir)) # 'maps' is the name of the resource
+addResourcePath('kepmap', paste0(getwd(), kepmap_dir)) # 'maps' is the name of the resource
+addResourcePath('maps', paste0(getwd(), scoremap_dir)) # 'maps' is the name of the resource
+#addResourcePath('maps', getwd())
 
 ui <- shinyUI(
     navbarPage("Transit Accessibility Dashboard",
@@ -19,9 +23,6 @@ ui <- shinyUI(
                             
                             # styles
                             tags$head(includeCSS("styles.css"), includeScript("gomap.js")),
-                            
-                            # view path - test string
-                            #mainPanel(br(), br(), textOutput('string_path')),
                             
                             # options panel
                             absolutePanel(id = "controls", class = "panel panel-default",
@@ -86,13 +87,13 @@ server <- function(input, output){
         nearest_n <- input$nearest_n
         weight <- str_to_lower(input$weight)
         amn_name <- input$type
-        html_file <- glue("{amn_name} Transit Accessibility - Weighted ({weight}) - Nearest Amenities ({nearest_n})")
+        html_file <- glue("{amn_name} - wt({weight}) - n({nearest_n})")
         return(glue('/{html_file}.html'))
     })
     
     getPage_kep <- reactive({ 
         amn_name <- input$type_iso
-        html_file <-  glue('{amn_name} all_type_Kepler')
+        html_file <-  glue('all_type_Kepler')
         return(glue('/{html_file}.html'))
     })
     
@@ -109,16 +110,16 @@ server <- function(input, output){
                     height='1250') # dynamic height (100%) doesn't work so I set it manually
     })
     
-    # dynamic file calling
+    # dynamic file calling kepler map
     output$kepler <- renderUI({
-        tags$iframe(seamless="seamless", src=paste0('maps', getPage_kep()),
+        tags$iframe(seamless="seamless", src=paste0('kepmap', getPage_kep()),
                     width='100%',
                     height='1250') # dynamic height (100%) doesn't work so I set it manually
     })
     
     # dynamic file calling isochrone map
     output$map_iso <- renderUI({
-        tags$iframe(seamless="seamless", src=paste0('maps', getPage_iso()),
+        tags$iframe(seamless="seamless", src=paste0('isomaps', getPage_iso()),
                     width='100%',
                     height='1250') # dynamic height (100%) doesn't work so I set it manually
     })
