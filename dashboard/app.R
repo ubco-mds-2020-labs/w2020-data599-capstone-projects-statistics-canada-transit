@@ -14,7 +14,6 @@ scoremap_dir <- "/score_maps"
 addResourcePath('isomaps', paste0(getwd(), isomap_dir)) # 'maps' is the name of the resource
 addResourcePath('kepmap', paste0(getwd(), kepmap_dir)) # 'maps' is the name of the resource
 addResourcePath('maps', paste0(getwd(), scoremap_dir)) # 'maps' is the name of the resource
-#addResourcePath('maps', getwd())
 
 ui <- shinyUI(
     navbarPage("Transit Accessibility Dashboard",
