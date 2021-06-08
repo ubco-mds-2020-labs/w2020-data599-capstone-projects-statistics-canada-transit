@@ -41,7 +41,6 @@ ttm <- read_csv('data/clean/ttm.csv')
 ```{R}
 #Merge review dataset with vancouver point of interest
 left_join(review_poi,van_poi,by=c("poi_name"="name"))%>%distinct()->merged_data
-
 ```
 
 
@@ -301,7 +300,6 @@ return ((x - min(x)) / (max(x) - min(x)))
 # 
 poi_int<-c("museum","gallery","theatre/performance and concert hall")
 
-
 df<-weights(merged_data,Amenity="museum")%>%as.data.frame()
 colnames(df)
 
@@ -344,8 +342,6 @@ names(amenity_wts) <- c('id', 'weight')
 amenity_wts$id <-  as.factor(amenity_wts$id)
 amenity_wts[!duplicated(amenity_wts$id), ]->amenity_wts
 amenity_wts %>% group_by(id) %>% summarize(n = n()) %>% arrange(desc(n))
-
-
 
 # Check: are all the ttm amenity IDs in the weighted IDs set?
 check <- all(unique(ttm$toId) %in% unique(amenity_wts$id))
