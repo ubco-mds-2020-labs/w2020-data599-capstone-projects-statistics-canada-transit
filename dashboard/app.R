@@ -24,6 +24,9 @@ ui <- shinyUI(
                             # styles
                             tags$head(includeCSS("styles.css"), includeScript("gomap.js")),
                             
+                            # leaflet html map
+                            htmlOutput('map'),
+                            
                             # options panel
                             absolutePanel(id = "controls", class = "panel panel-default",
                                           fixed = TRUE, draggable = TRUE,
@@ -33,12 +36,10 @@ ui <- shinyUI(
                                           selectInput(inputId = "type", label = "Amenity Type", choices = amenity_factor),
                                           selectInput(inputId = "weight", label =  "Popularity Weights", choices= weight_factor),
                                           selectInput(inputId = "nearest_n", label =  "Nearest n Amenities", choices = nearest_n_factor)),
-                             
-                            # leaflet html map
-                            htmlOutput('map'),
                             
                             # citations
-                            tags$div(id="cite", 'Data compiled for ', tags$em('Citation Here'), ' by Author (Publisher, Year).'))
+                           # tags$div(id="cite", 'Data compiled for ', tags$em('Citation Here'), ' by Author (Publisher, Year).')
+                           )
                ),
                
                navbarMenu("More",
@@ -50,8 +51,8 @@ ui <- shinyUI(
                                        # styles
                                        tags$head(includeCSS("styles.css"), includeScript("gomap.js")),
                                        
-                                       # view path - test string
-                                       #mainPanel(br(), br(), textOutput('string_path')),
+                                       # get the map
+                                        htmlOutput('map_iso'),
                                        
                                        # options panel
                                        absolutePanel(id = "controls", class = "panel panel-default",
@@ -61,10 +62,9 @@ ui <- shinyUI(
                                                      h2("Accessibility Explorer"),
                                                      selectInput(inputId = "type_iso", label = "Amenity Type", choices = amenity_factor)),
                                        
-                                        # get the map
-                                        htmlOutput('map_iso'),
                                        # citations
-                                       tags$div(id="cite", 'Data compiled for ', tags$em('Citation Here'), ' by Author (Publisher, Year).'))
+                                      # tags$div(id="cite", 'Data compiled for ', tags$em('Citation Here'), ' by Author (Publisher, Year).')
+                                      )
                           ),
                           
                           tabPanel("Kepler Visualizations",
@@ -106,22 +106,25 @@ server <- function(input, output){
     # dynamic file calling
     output$map <- renderUI({
         tags$iframe(seamless="seamless", src=paste0('maps', getPage()),
+                    style="position: absolute; top: 0; right: 0; bottom: 0: left: 0;",
                     width='100%',
-                    height='1250') # dynamic height (100%) doesn't work so I set it manually
+                    height='100%') # dynamic height (100%) doesn't work so I set it manually
     })
     
     # dynamic file calling kepler map
     output$kepler <- renderUI({
         tags$iframe(seamless="seamless", src=paste0('kepmap', getPage_kep()),
+                    style="position: absolute; top: 0; right: 0; bottom: 0: left: 0;",
                     width='100%',
-                    height='1250') # dynamic height (100%) doesn't work so I set it manually
+                    height='100%') # dynamic height (100%) doesn't work so I set it manually
     })
     
     # dynamic file calling isochrone map
     output$map_iso <- renderUI({
         tags$iframe(seamless="seamless", src=paste0('isomaps', getPage_iso()),
+                    style="position: absolute; top: 0; right: 0; bottom: 0: left: 0;",
                     width='100%',
-                    height='1250') # dynamic height (100%) doesn't work so I set it manually
+                    height='100%') # dynamic height (100%) doesn't work so I set it manually
     })
 }
     
