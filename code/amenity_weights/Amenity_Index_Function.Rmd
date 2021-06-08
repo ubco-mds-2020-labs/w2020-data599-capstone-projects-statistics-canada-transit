@@ -25,15 +25,26 @@ library(hablar)
 
 Requires two dataset; *google_reviews_poi_with_hours.csv* and *vancouver_facilities_2.csv*
 ```{R message=FALSE, warning=FALSE}
-review_poi<- read_csv("~/Desktop/MDS/data599/google-reviews-arts/google_reviews_poi_with_hours.csv")
-van_poi<-read_csv("~/Desktop/MDS/data599/w2020-data599-capstone-projects-statistics-canada-transit/data/clean/vancouver_facilities_2.csv")
+
+### set w2020-data599 as working directory
+library_obj<-read.csv("data/raw/public_library_data.csv",fileEncoding="latin1")
+review_poi<-read_csv("data/clean/google_reviews_poi_with_hours.csv")
+van_poi<-read_csv("data/clean/vancouver_facilities_2.csv")
+# import travel time matrix
+ttm <- read_csv('data/clean/ttm.csv')
 ```
+
+
+
 
 
 ```{R}
 #Merge review dataset with vancouver point of interest
 left_join(review_poi,van_poi,by=c("poi_name"="name"))%>%distinct()->merged_data
+
 ```
+
+
 
 **Convert the data to numeric **
 ```{R message=FALSE, warning=FALSE}
@@ -44,7 +55,6 @@ merged_data%>% convert(num(Rating, Total_Review,open_days,Total_hours))->merged_
 **Number of amenity in each type of arts facility **
 ```{R}
 merged_data%>%group_by(type)%>%count()
-
 ```
 Our primary interest would be gallery(n=99),library(n=86),museum(n=92) and theatre(n=75)
 
@@ -52,12 +62,13 @@ Our primary interest would be gallery(n=99),library(n=86),museum(n=92) and theat
 
 ##### visualize missing value 
 ```{R}
-merged_data%>%select(poi_name,Name,open_days,Total_hours,Rating,Total_Review)->df
+merged_data%>%select(poi_name,Name,type,open_days,Total_hours,Rating,Total_Review,lat,lon)->df
 
 colnames(df)
-colnames(df) <- c("POI Name", "Google Place Name","Open Days","Open Hours","Rating","Total Review")
+colnames(df) <- c("POI Name", "Google Place Name","Type","Open Days","Open Hours","Rating","Total Review","lat","lon")
 df[df == 0] <- NA
 missing_percentage<-colMeans(is.na(df))
+
 missing.values <- df%>%
   gather(key = "key", value = "val") %>%
   mutate(isna = is.na(val)) %>%
@@ -89,10 +100,83 @@ percentage.plot <- missing.values %>%
              'Variable', y = "% of missing values")
 
 p<-percentage.plot+ theme_minimal()
+p
 
 ggsave("amenity_missing.png", width = 5, height = 2)
 ```
 
+
+**data cleaning**
+
+```{R,options(digits = 2)}
+van_list = c('Richmond','Vancouver','Burnaby','Township of Langley','North Vancouver','New Westminster','Maple Ridge','Port Moody','Surrey','Langley',
+            'Coquitlam','Delta','Fort Langley','White Rock','Pitt Meadows','Port Coquitlam', 'West Vancouver')
+library_obj
+
+
+# select those only in big vancouver area
+library_obj%>%filter(CITY%in%van_list)->library_obj
+
+# select column and rename them
+
+colnames(library_obj)
+
+library_obj%>%select('BRANCH_UNIQUE_ID', 'POSTAL_CODE', 'LATITUDE', 'LONGITUDE', 'MTLS_OUTLET', 'VISITS_B', 'FLOORSPACE.', 'HRS_OPEN.', 'DAYS_OPEN.')->lib_df
+
+colnames(lib_df)<-c('Branch_Id', 'Postal_Code', 'lat', 'lon', 'Total_Volumes', 'Annual_Visitors', 'Total_Space', 'Hrs_per_Year', 'Days_per_Year')
+
+# check nas
+colMeans(is.na(lib_df))
+
+
+  
+
+
+  
+  
+df%>%filter(Type=="library or archives")->df_lib
+
+
+# left join 
+
+#round to 2 decimal
+
+df_lib%>% convert(num(lat,lon))->df_lib
+df_lib$lat<-round(df_lib$lat,2)
+df_lib$lon<-round(df_lib$lon,2)
+lib_df$lat<-round(lib_df$lat,2)
+lib_df$lon<-round(lib_df$lon,2)
+df_lib<-na_mean(df_lib)
+merged_lib<-left_join(df_lib,lib_df,by = c("lat", "lon"))
+merged_lib%>%select("POI Name","Open Days","Open Hours", "Rating","Total Review","Total_Volumes","Annual_Visitors","Total_Space" )->merged_lib
+merged_lib%>% convert(num(Total_Volumes,Annual_Visitors,Total_Space))->merged_lib
+
+
+
+# exclude the name
+n_features<-merged_lib%>%rowwise()%>%apply(1,function(x) sum(is.na(x)==F))
+
+#normaliz with library
+normalize <- function(x) {
+return ((x - min(x,na.rm = T)) / (max(x,na.rm = T) - min(x,na.rm = T)))
+  }
+  
+  
+
+norm_lib<-merged_lib%>%mutate_if(is.numeric, normalize)
+  
+norm_lib$n_features<-n_features-1
+norm_lib%>%rowwise() %>%mutate(Total_features=sum(`Open Days`,`Open Hours`,Rating,`Total Review`,Total_Volumes,Annual_Visitors,Total_Space,na.rm=TRUE),index=Total_features/n_features)->norm_lib
+
+
+
+
+colnames(lib_poi)
+norm_lib%>%select(`POI Name`,index)->lib_poi
+colnames(lib_poi)<-c("poi_name","Index" )
+
+
+```
 ### Weight Index function 
 
 Weight index function takes two arguments, *data* and *type*. *data* should contain the info of amenities such as poi_name,pid,Rating,Total_review,opening_hours,opening_days and total hours. The second argument is the amenity type of interest, for example, museum, gallery, library or archives,etc. Once the function has been called, it returns a list that contains the dataset with weighted amenity index,density plots, correlation plot with corresponding features.
@@ -100,6 +184,8 @@ Weight index function takes two arguments, *data* and *type*. *data* should cont
 
 
 $$Normalize_i = \frac{Value_i-min(Value)}{max(Value)-min(Value)}$$
+
+**weight index funciton with plot**
 ```{R}
 weight_index<-function(data,Amenity="museuem"){
   data%>%filter(type==Amenity)->poi_type
@@ -177,29 +263,135 @@ Norm_poi%>%mutate(Index=(open_days+Total_hours+Rating+Total_Review)/4)->Norm_poi
 
 ```
 
+**weight index function without plots**
+
+```{R}
+weights<-function(data,Amenity="museuem"){
+  data%>%filter(type==Amenity)->poi_type
+  # select relevent features 
+  poi_type%>%select(poi_name,open_days,Total_hours,Rating,Total_Review)->poi_type
+  # check number of missing data
+  poi_type[poi_type == 0] <- NA
+  missing_percentage<-colMeans(is.na(poi_type))
+  
+  # fill NA with column mean 
+  poi_type<-na_mean(poi_type)
+
+  # normalize the features 
+  normalize <- function(x) {
+return ((x - min(x)) / (max(x) - min(x)))
+  }
+  
+  Norm_poi<-poi_type%>%mutate_if(is.numeric, normalize)
+  
+  # Navie weighted index 
+  Norm_poi%>%mutate(Index=(open_days+Total_hours+Rating+Total_Review)/4)->Norm_poi
+  Norm_poi%>%select(poi_name,Index)->return_df
+  return(return_df)
+
+  
+}
+
+```
+
 
 #### Select the point of interest 
 
 ```{r echo=TRUE, fig.show='hide'}
-# we are only interested in museum 
-poi_int<-c("museum","library or archives","gallery","theatre/performance and concert hall")
+# 
+poi_int<-c("museum","gallery","theatre/performance and concert hall")
 
 
-df<-weight_index(merged_data,Amenity="museum")
-df<-df$data[FALSE,]
+df<-weights(merged_data,Amenity="museum")%>%as.data.frame()
+colnames(df)
+
+df<-df[F,]
+
+
 
 for(name in poi_int){
-  tem<-invisible(weight_index(merged_data,Amenity=name))
-  df<-rbind(invisible(tem$data),df)
+  tem<-weights(merged_data,Amenity=name)
+  df<-rbind(invisible(tem),df)
 }
 
 
-head(df)
+
 ```
 
+```{R}
+
+df
+```
+
+
+
+**merge score with library**
+
+```{R}
+
+# convert lat and lon into numeric 
+
+rbind(df,lib_poi)->df_poi
+poi_index<-left_join(df_poi,van_poi,by=c("poi_name"="name"))
+
+
+```
+
+```{R}
+# clean weights
+amenity_wts <- poi_index[, c('id', 'Index')]
+names(amenity_wts) <- c('id', 'weight')
+amenity_wts$id <-  as.factor(amenity_wts$id)
+amenity_wts[!duplicated(amenity_wts$id), ]->amenity_wts
+amenity_wts %>% group_by(id) %>% summarize(n = n()) %>% arrange(desc(n))
+
+
+
+# Check: are all the ttm amenity IDs in the weighted IDs set?
+check <- all(unique(ttm$toId) %in% unique(amenity_wts$id))
+# needs to be true for the join to work
+paste('Are all the ttm amenity IDs in the weighted IDs set? =', check)
+
+
+```
+
+### Fixed unequal number of ttm amenity IDs in the weighted IDs
+
+```{R}
+# convert Ids to  factor
+ttm$fromId <- as.factor(ttm$fromId)
+ttm$toId <- as.factor(ttm$toId)
+# ttm ids that appear in the weights ids
+ttm_id_in_wts <- unique(ttm$toId)[unique(ttm$toId) %in% unique(amenity_wts$id)]
+
+# subset these id that not in amenity wts
+ttm_id_not_in_wts <- unique(subset(ttm, !(toId %in% ttm_id_in_wts))$toId)
+ttm_id_not_in_wts <- as.data.frame(list("id_not_in_wts" = ttm_id_not_in_wts))
+
+paste('Number of id that not in amenity wts ', ttm_id_not_in_wts %>% nrow())
+
+
+# assign minimum weight on those places
+ttm_id_not_in_wts$weight <- min(amenity_wts$weight)
+colnames(ttm_id_not_in_wts)[1] <- "id"
+
+# add it to amenity weights
+amenity_wts <- rbind(amenity_wts, ttm_id_not_in_wts)
+
+
+
+amenity_wts<-amenity_wts[complete.cases(amenity_wts),]
+# Check: are all the ttm amenity IDs in the weighted IDs set?
+check <- all(unique(ttm$toId) %in% unique(amenity_wts$id))
+paste('Are all the ttm amenity IDs in the weighted IDs set? (needs to be true for the join to work) =', check)
+
+```
+
+
+
 ##### Export csv 
-poi_index csv file contains geo information (lat and lon) as well the accessibility index. To be noticed, it only contians 4 amenity type ("museum","library or archives","gallery","theatre/performance and concert hall")
+amenity_wts file contians id and wieghts 
 ```{r echo=TRUE}
-poi_index<-left_join(df,van_poi,by=c("poi_name"="name"))
-write.csv(poi_index,'/Users/yuxuancui/Desktop/MDS/data599/Amenity_index/poi_index.csv',row.names = FALSE)
+#poi_index<-left_join(df,van_poi,by=c("poi_name"="name"))
+write.csv(amenity_wts,'data/amenity_weights/amenity_wts.csv',row.names = FALSE)
 ```
