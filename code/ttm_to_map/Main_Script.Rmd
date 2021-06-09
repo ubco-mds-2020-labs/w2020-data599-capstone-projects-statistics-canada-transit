@@ -116,8 +116,7 @@ amenity_wts <- read.csv('../../data/amenity_weights/amenity_wts.csv')
 amenity_wts
 
 # clean weights
-amenity_wts <- amenity_wts[, c('id', 'Index')]
-names(amenity_wts) <- c('id', 'weight')
+
 amenity_wts$id <-  as.factor(amenity_wts$id)
 
 amenity_wts %>% group_by(id) %>% summarize(n = n()) %>% arrange(desc(n))
