@@ -116,8 +116,7 @@ amenity_wts <- read.csv('../../data/amenity_weights/amenity_wts.csv')
 amenity_wts
 
 # clean weights
-amenity_wts <- amenity_wts[, c('id', 'Index')]
-names(amenity_wts) <- c('id', 'weight')
+
 amenity_wts$id <-  as.factor(amenity_wts$id)
 
 amenity_wts %>% group_by(id) %>% summarize(n = n()) %>% arrange(desc(n))
@@ -130,9 +129,11 @@ paste('Are all the ttm amenity IDs in the weighted IDs set? =', check)
 
 ```
 
-### Fixed unequal number of ttm amenity IDs in the weighted IDs
+### Fixed unequal number of ttm amenity IDs in the weighted IDs If check == False
 
 ```{R}
+
+if (check == F){
 # ttm ids that appear in the weights ids
 ttm_id_in_wts <- unique(ttm$toId)[unique(ttm$toId) %in% unique(amenity_wts$id)]
 
@@ -153,7 +154,7 @@ amenity_wts <- rbind(amenity_wts, ttm_id_not_in_wts)
 # Check: are all the ttm amenity IDs in the weighted IDs set?
 check <- all(unique(ttm$toId) %in% unique(amenity_wts$id))
 paste('Are all the ttm amenity IDs in the weighted IDs set? (needs to be true for the join to work) =', check)
-
+}
 ```
 
 ### Join ttm, destination types, and amenity weights

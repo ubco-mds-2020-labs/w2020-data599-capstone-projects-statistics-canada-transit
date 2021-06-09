@@ -210,6 +210,7 @@ paste('Are all the ttm amenity IDs in the weighted IDs set? (needs to be true fo
 
 
 
+
 ```
 
 
@@ -218,7 +219,14 @@ paste('Are all the ttm amenity IDs in the weighted IDs set? (needs to be true fo
 amenity_wts file contains id and wieghts 
 ```{r echo=TRUE}
 #poi_index<-left_join(df,van_poi,by=c("poi_name"="name"))
-write.csv(amenity_wts,'../../data/amenity_weights/amenity_wts.csv',row.names = FALSE)
+if (check == TRUE){
+  write.csv(amenity_wts,'../../data/amenity_weights/amenity_wts.csv',row.names = FALSE)
+  print("exported")
+}
+
+if (check == F){
+  print("double check it ")
+}
 ```
 
 
