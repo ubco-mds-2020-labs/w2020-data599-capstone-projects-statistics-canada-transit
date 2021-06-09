@@ -129,9 +129,11 @@ paste('Are all the ttm amenity IDs in the weighted IDs set? =', check)
 
 ```
 
-### Fixed unequal number of ttm amenity IDs in the weighted IDs
+### Fixed unequal number of ttm amenity IDs in the weighted IDs If check == False
 
 ```{R}
+
+if (check == F){
 # ttm ids that appear in the weights ids
 ttm_id_in_wts <- unique(ttm$toId)[unique(ttm$toId) %in% unique(amenity_wts$id)]
 
@@ -152,7 +154,7 @@ amenity_wts <- rbind(amenity_wts, ttm_id_not_in_wts)
 # Check: are all the ttm amenity IDs in the weighted IDs set?
 check <- all(unique(ttm$toId) %in% unique(amenity_wts$id))
 paste('Are all the ttm amenity IDs in the weighted IDs set? (needs to be true for the join to work) =', check)
-
+}
 ```
 
 ### Join ttm, destination types, and amenity weights
