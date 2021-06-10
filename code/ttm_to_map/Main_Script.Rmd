@@ -273,7 +273,7 @@ scores_long <- rbindlist(list(scores_long_weighted, scores_long_unweighted))
 ```
 
 
-# Processing efficiency scores
+# 3 Processing efficiency scores
 ```{r}
 
 # Function to calculate effiency withing 'X' degrees of each block
@@ -305,14 +305,13 @@ for(df in df_types){
   df$eff_ravg <- apply(df,1, func)
   scores_eff_all <- rbind(scores_eff_all,df)
 }
-
-write.csv(scores_eff_all[,c(1,2,6:8,10)], '../../data/efficiency/running_eff_scores.csv', row.names = FALSE)
+efficiency_frame <- scores_eff_all[,c(1,2,6:8,10)]
 ```
 
 
 
 
-## 3) Dataset Wrangling Part II (NA Insertion)
+## 4) Dataset Wrangling Part II (NA Insertion)
 
 Each origin(fromId) should have x different scores where x is defined by:
 
@@ -360,6 +359,22 @@ paste(glue('{nrow(isochrone_frame)} of {total_expected} rows filled ({round((nro
 paste(length(missing_blocks)*4, 'to add')
 
 
+cat(paste0('\n')) # line break
+paste0('EFFICIENCY FRAME')
+
+# HOW MANY ROWS TO FILL IN EFFICIENCY FRAME?
+N <- uniqueN(efficiency_frame$fromId) * 4 # expected rows
+paste(glue('{nrow(efficiency_frame)} of {N} rows filled ({round((nrow(efficiency_frame) / N)*100, 2)}%)'))
+paste(N - nrow(efficiency_frame), 'to fill.')
+
+cat(paste0('\n')) # line break
+
+# HOW MANY ROWS TO ADD IN EFFICIENCY FRAME?
+# existing IDs that weren't included in ttm
+missing_blocks <- array(setdiff(origins$id, efficiency_frame$fromId))
+total_expected <- nrow(efficiency_frame) + length(missing_blocks) * 4 # only 4 values per origin
+paste(glue('{nrow(efficiency_frame)} of {total_expected} rows filled ({round((nrow(efficiency_frame) / total_expected)*100, 2)}%)'))
+paste(length(missing_blocks)*4, 'to add')
 ```
 
 ```{r}
@@ -380,6 +395,14 @@ all_isochrone_frame <- NA_table_filler(filled_isochrone_frame,
                                        custom_idx = missing_blocks,
                                        isochrone=TRUE)
 
+# fill NA for all existing origin IDs
+filled_efficiency_frame <- NA_table_filler(efficiency_frame,
+                                          efficiency = TRUE)
+# add missing NAs to isochrone frame
+all_efficiency_frame <- NA_table_filler(filled_efficiency_frame,
+                                       custom_idx = missing_blocks,
+                                       efficiency=TRUE)
+
 ```
 
 ```{r}
@@ -387,6 +410,11 @@ all_isochrone_frame <- NA_table_filler(filled_isochrone_frame,
 # there should be 4 counts per fromId
 iso_id_counts <- all_isochrone_frame %>% group_by(fromId) %>% summarise(n = n())
 unique(iso_id_counts$n)
+
+# check efficiency
+# there should be 32 counts per fromId
+eff_id_counts <- all_efficiency_frame %>% group_by(fromId) %>% summarise(n = n())
+unique(eff_id_counts$n)
 
 # check scores
 # there should be 32 counts per fromId
@@ -402,6 +430,7 @@ Now lets add population data to the scores and isochrone frame
 # right join with origins to include origins without transit access
 
 all_scores_long <- right_join(all_scores_long, origins, by = c('fromId' = 'id'))
+all_efficiency_frame <- right_join(all_efficiency_frame, origins, by = c('fromId' = 'id'))
 all_isochrone_frame <- right_join(all_isochrone_frame, origins, by = c('fromId' = 'id'))
 
 ```
@@ -410,15 +439,16 @@ all_isochrone_frame <- right_join(all_isochrone_frame, origins, by = c('fromId' 
 
 ## Export checkpoint
 write.csv(all_scores_long, '../../data/html_mapping_data/scores_long.csv', row.names = FALSE)
+write.csv(all_efficiency_frame, '../../data/html_mapping_data/efficiency_frame.csv', row.names = FALSE)
 write.csv(all_isochrone_frame, '../../data/html_mapping_data/isochrone_frame.csv', row.names = FALSE)
 
 ```
 
 
-## 4) Interactive Visualization
+## 5) Interactive Visualization
 ```{r}
 # join factor and geometry data 
-eff_viz_frame <- left_join(vancouver_shape, scores_eff_all[,c(1,2,6:8,10)], by = c('DBUID' = 'fromId'))
+eff_viz_frame <- left_join(vancouver_shape, all_efficiency_frame, by = c('DBUID' = 'fromId'))
 scores_viz_frame <- left_join(vancouver_shape, all_scores_long, by = c('DBUID' = 'fromId'))
 isochrone_viz_frame <- left_join(vancouver_shape, all_isochrone_frame, by = c('DBUID' = 'fromId'))
 
@@ -443,7 +473,7 @@ isochrone_viz_frame_st <- st_transform(isochrone_viz_frame_sf, crs = 4326)
 ```
 
 
-## 5) Map HTML Exports
+## 6) Map HTML Exports
 
 ```{r}
 # exclue NA in type
@@ -453,6 +483,8 @@ for (amenity in type_name) {
   
   # 4 isochrone maps
   map_maker_isochrone(data = isochrone_viz_frame_st, amenity, output_dir = '../../data/html_maps/isochrone_maps')
+  
+  # 4 efficiency maps
   map_maker_efficiency(data = eff_viz_frame_st, amenity, output_dir = '../../data/html_maps/efficiency_maps')
 
   for (weight in unique(scores_viz_frame_st$weight)) {
