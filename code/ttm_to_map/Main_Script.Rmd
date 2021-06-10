@@ -28,6 +28,7 @@ library(glue)
 library(stringr)
 library(sf)
 library(data.table)
+library(bit64)
 
 # visualization
 library(leaflet)
@@ -53,7 +54,7 @@ knit_print.summary <- lemon_print
 ### Import all dissemination block data
 ```{r}
 # import dissemination blocks and keep id and pop columns
-origins <- fread(file.path("../../data/clean", "vancouver_db.csv"))[, .(id, pop)]
+origins <- fread(file.path("../../data/clean", "vancouver_db.csv"))[, .(id, pop, lat, lon)]
 origins$pop <- str_replace_all(origins$pop, ',', '')
 
 # change col types
@@ -269,6 +270,53 @@ scores_long_unweighted <- rbindlist(score_list) %>% arrange(fromId, nearest_n)
 scores_long_weighted <- rbindlist(score_list_weighted) %>% arrange(fromId, nearest_n)
 
 scores_long <- rbindlist(list(scores_long_weighted, scores_long_unweighted))
+```
+
+
+#Preprocessing for effiency scores
+```{r}
+
+# Function to calculate effiency withing 'X' degrees of each block
+  func <- function(row){
+    mean(filter(scores_func, scores_func$lat <= (as.numeric(row["lat"])+0.02) & scores_func$lat >= (as.numeric(row["lat"])-0.02) & scores_func$lon <= (as.numeric(row["lon"])+0.02) & scores_func$lon >= (as.numeric(row["lon"])-0.02))$eff)
+  }
+
+origins_pos <- origins
+scores_long_pos <-filter(scores_long,stringr::str_detect(nearest_n, 'all') & stringr::str_detect(weight, 'no'))
+scores_pos <- left_join(scores_long_pos, origins_pos, by=c("fromId" = "id"), keep = FALSE)
+
+# Calulate initial efficiency for each block
+scores_pos$pop <- normalize_vec(scores_pos$pop)
+scores_pos$eff <- 1 - abs(scores_pos$pop - scores_pos$score)
+scores_pos$eff <- normalize_vec(scores_pos$eff)
+
+
+# Create dataframe for each amenity type
+scores_eff_gal <- filter(scores_pos,stringr::str_detect(type, 'gallery'))
+scores_eff_lib <- filter(scores_pos,stringr::str_detect(type, 'library or archives'))
+scores_eff_thea <- filter(scores_pos,stringr::str_detect(type, 'theatre/performance and concert hall'))
+scores_eff_mus <- filter(scores_pos,stringr::str_detect(type, 'museum'))
+
+scores_eff_all <- data.frame(fromId=factor(),type=factor(),score=numeric(),weight=factor(),nearest_n=factor(),pop=numeric(),lat=numeric(),lon=numeric(),eff=numeric())
+df_types <- list(scores_eff_gal,scores_eff_lib,scores_eff_thea,scores_eff_mus)
+for(df in df_types){
+  scores_func <- df
+  df$eff_ravg <- apply(df,1, func)
+  scores_eff_all <- rbind(scores_eff_all,df)
+}
+
+#scores_eff_all <- scores_eff_all[-c(3,4,5)]
+
+#scores_eff_all <- rbind(scores_eff_gal,scores_eff_lib,scores_eff_thea,scores_eff_mus)[-c(3,4,5)]
+write.csv(scores_eff_all[,c(1,2,6:8,10)], '../../data/efficiency/running_eff_scores.csv', row.names = FALSE)
+```
+
+```{r}
+scores_eff_all[,c(1,2,6:8,10)]
+```
+
+```{r}
+temp
 ```
 
 
