@@ -86,6 +86,7 @@ NA_grid_maker <- function(id, df, isochrone = FALSE) {
   all_amenities <- as.character(unique(df$type))
   # get missing amenities by indexing the fromId and keeping only unique types
   missing_amenities <- setdiff(all_amenities, unique(df$type[df$fromId == id]))
+  
   if (isochrone == FALSE) {
     # create NA rows to append via expand.grid (creates a row for every factor combination)
     NA_rows <- expand.grid('fromId' = id,
