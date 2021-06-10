@@ -212,7 +212,7 @@ map_maker_efficiency <- function(data, amenity, output_dir, view_map = FALSE) {
       str_replace('And', 'and') %>%
       str_replace('/Performance', '')
     
-    file_name <- glue('{amn_name}')
+    file_name <- glue('{amn_name} efficiency map')
     print(paste('Current Map:', file_name))
     
     # subset info
