@@ -28,6 +28,7 @@ library(glue)
 library(stringr)
 library(sf)
 library(data.table)
+library(bit64)
 
 # visualization
 library(leaflet)
@@ -53,7 +54,7 @@ knit_print.summary <- lemon_print
 ### Import all dissemination block data
 ```{r}
 # import dissemination blocks and keep id and pop columns
-origins <- fread(file.path("../../data/clean", "vancouver_db.csv"))[, .(id, pop)]
+origins <- fread(file.path("../../data/clean", "vancouver_db.csv"))[, .(id, pop, lat, lon)]
 origins$pop <- str_replace_all(origins$pop, ',', '')
 
 # change col types
@@ -272,6 +273,44 @@ scores_long <- rbindlist(list(scores_long_weighted, scores_long_unweighted))
 ```
 
 
+# Processing efficiency scores
+```{r}
+
+# Function to calculate effiency withing 'X' degrees of each block
+  func <- function(row){
+    mean(filter(scores_func, scores_func$lat <= (as.numeric(row["lat"])+0.005) & scores_func$lat >= (as.numeric(row["lat"])-0.005) & scores_func$lon <= (as.numeric(row["lon"])+0.005) & scores_func$lon >= (as.numeric(row["lon"])-0.005))$eff)
+  }
+
+origins_pos <- origins
+scores_long_pos <-filter(scores_long,stringr::str_detect(nearest_n, 'all') & stringr::str_detect(weight, 'no'))
+scores_pos <- left_join(scores_long_pos, origins_pos, by=c("fromId" = "id"), keep = FALSE)
+
+# Calulate initial efficiency for each block
+scores_pos$pop <- normalize_vec(scores_pos$pop)
+scores_pos$eff <- abs(scores_pos$pop - scores_pos$score)
+scores_pos$eff <- normalize_vec(scores_pos$eff)
+
+
+# Create dataframe for each amenity type
+scores_eff_gal <- filter(scores_pos,stringr::str_detect(type, 'gallery'))
+scores_eff_lib <- filter(scores_pos,stringr::str_detect(type, 'library or archives'))
+scores_eff_thea <- filter(scores_pos,stringr::str_detect(type, 'theatre/performance and concert hall'))
+scores_eff_mus <- filter(scores_pos,stringr::str_detect(type, 'museum'))
+
+# Create running efficiency scores
+scores_eff_all <- data.frame(fromId=factor(),type=factor(),score=numeric(),weight=factor(),nearest_n=factor(),pop=numeric(),lat=numeric(),lon=numeric(),eff=numeric())
+df_types <- list(scores_eff_gal,scores_eff_lib,scores_eff_thea,scores_eff_mus)
+for(df in df_types){
+  scores_func <- df
+  df$eff_ravg <- apply(df,1, func)
+  scores_eff_all <- rbind(scores_eff_all,df)
+}
+
+write.csv(scores_eff_all[,c(1,2,6:8,10)], '../../data/efficiency/running_eff_scores.csv', row.names = FALSE)
+```
+
+
+
 
 ## 3) Dataset Wrangling Part II (NA Insertion)
 
@@ -379,14 +418,17 @@ write.csv(all_isochrone_frame, '../../data/html_mapping_data/isochrone_frame.csv
 ## 4) Interactive Visualization
 ```{r}
 # join factor and geometry data 
+eff_viz_frame <- left_join(vancouver_shape, scores_eff_all[,c(1,2,6:8,10)], by = c('DBUID' = 'fromId'))
 scores_viz_frame <- left_join(vancouver_shape, all_scores_long, by = c('DBUID' = 'fromId'))
 isochrone_viz_frame <- left_join(vancouver_shape, all_isochrone_frame, by = c('DBUID' = 'fromId'))
 
 # convert back to sf object
+eff_viz_frame_sf <- st_as_sf(eff_viz_frame)
 scores_viz_frame_sf <- st_as_sf(scores_viz_frame)
 isochrone_viz_frame_sf <- st_as_sf(isochrone_viz_frame)
 
 # convert to st object
+eff_viz_frame_st <- st_transform(eff_viz_frame_sf, crs = 4326)
 scores_viz_frame_st <- st_transform(scores_viz_frame_sf, crs = 4326)
 isochrone_viz_frame_st <- st_transform(isochrone_viz_frame_sf, crs = 4326)
 
@@ -411,6 +453,7 @@ for (amenity in type_name) {
   
   # 4 isochrone maps
   map_maker_isochrone(data = isochrone_viz_frame_st, amenity, output_dir = '../../data/html_maps/isochrone_maps')
+  map_maker_efficiency(data = eff_viz_frame_st, amenity, output_dir = '../../data/html_maps/efficiency_maps')
 
   for (weight in unique(scores_viz_frame_st$weight)) {
     for (nearest_n in unique(scores_viz_frame_st$nearest_n)) {

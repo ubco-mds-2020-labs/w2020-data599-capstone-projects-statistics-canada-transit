@@ -181,6 +181,57 @@ map_maker_scores <- function(data, amenity, weight, nearest_n, output_dir, view_
                     "<br>Block Population: <strong>", polyg_subset$pop,"</strong>",
                     "<br><br>Block ID: ", polyg_subset$DBUID,
                     "<br>Raw Score: ", round(score_vec, 2))
+  
+  map <- leaflet(data = polyg_subset) %>%
+    addPolygons(
+      stroke = FALSE,  # remove polygon borders
+      fillColor = ~pal_fun(score_vec), # set fill colour with pallette fxn from aboc
+      fillOpacity = 0.6, smoothFactor = 0.5, # aesthetics
+      popup = p_popup) %>% # add message popup to each block
+    addTiles() %>%
+    setView(lng = -122.8, lat = 49.2, zoom = 11) %>%
+    addLegend("bottomleft",  # location
+              pal=pal_fun,    # palette function
+              values=~score_vec,  # value to be passed to palette function
+              title = glue('{amn_name} Transit Access'))
+  
+  if (view_map == TRUE) {
+    return(map)
+  } else {
+    mapshot(map, url = glue("{getwd()}/{output_dir}/{file_name}.html"))
+  }
+  
+}
+
+# Efficiency maps
+map_maker_efficiency <- function(data, amenity, output_dir, view_map = FALSE) {
+    
+    amn_name <- amenity %>%
+      str_to_title() %>%
+      str_replace_all('Or', 'or') %>%
+      str_replace('And', 'and') %>%
+      str_replace('/Performance', '')
+    
+    file_name <- glue('{amn_name} efficiency map')
+    print(paste('Current Map:', file_name))
+    
+    # subset info
+    polyg_subset <- data[data$type == amenity, ]
+    
+    # score vector
+    score_vec <- polyg_subset$eff_ravg
+    
+    # colour palette 
+    Rd2Gn <- c("#e30606", "#fd8d3c", "#ffe669", "#cdff5e", "#64ed56")
+    pal_fun <- colorQuantile(palette = Rd2Gn, NULL, n = 5)
+    
+    # popup # percentile(score_vec),
+    percentile <- ecdf(score_vec)
+    p_popup <- paste0("Accessibility Percentile: <strong>", round(percentile(score_vec), 2)*100, '%',"</strong>", 
+                      "<br>Block Population: <strong>", polyg_subset$pop,"</strong>",
+                      "<br><br>Block ID: ", polyg_subset$DBUID,
+                      "<br>Running Efficiency Score: ", round(score_vec, 2))
+  
         
   map <- leaflet(data = polyg_subset) %>%
       addPolygons(
