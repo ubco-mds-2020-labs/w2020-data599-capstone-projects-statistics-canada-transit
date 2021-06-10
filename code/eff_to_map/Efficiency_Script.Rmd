@@ -1,0 +1,249 @@
+---
+title: "Travel Time Matrix to Maps"
+output: html_notebook
+---
+
+## Notebook Purpose
+
+This notebook serves to summarize the entire visualization process going from 
+the travel time matrix to the visualizations. That involves the following 
+sections:
+
+1) Travel Time Matrix Wrangling
+2) Score Computation
+3) Isochrone Computation
+4) Dataset Wrangling Part II (NA Insertion)
+5) Interactive Visualization
+6) Map HTML Exports
+
+## 0) Useful Libraries
+
+```{r message=FALSE, warning=FALSE, include=TRUE}
+# import custom scoring, cleaning, and visualization functions
+source('functions_eff.R')
+
+# wrangling/convenience
+library(tidyverse)
+library(glue)
+library(stringr)
+library(sf)
+library(data.table)
+library(bit64)
+
+# visualization
+library(leaflet)
+library(mapview); mapviewOptions(platform = 'leafgl')
+
+# For pretty knitting
+library(lemon)
+knit_print.data.frame <- lemon_print
+knit_print.tbl <- lemon_print
+knit_print.summary <- lemon_print
+```
+
+
+
+
+# 1 Initial data wrangling
+```{r}
+
+# Function to calculate efficiency withing 'X' degrees of each block
+
+#import scores
+scores_long <- read.csv('../../data/efficiency/initial_scores.csv', stringsAsFactors = FALSE)
+origins <- fread(file.path("../../data/clean", "vancouver_db.csv"), stringsAsFactors = FALSE)[, .(id, pop, lat, lon)]
+
+origins$pop <- str_replace_all(origins$pop, ',', '')
+
+# change col types
+scores_long$fromId <- as.factor(scores_long$fromId)
+origins$pop <- as.numeric(origins$pop)  
+origins$id <- as.factor(origins$id)  
+n_origins <- nrow(origins)
+paste('Origin Rows: ', n_origins)
+```
+
+
+# 2 Processing efficiency scores
+```{r}
+  func <- function(row){
+    mean(filter(scores_func, scores_func$lat <= (as.numeric(row["lat"])+0.005) & scores_func$lat >= (as.numeric(row["lat"])-0.005) & scores_func$lon <= (as.numeric(row["lon"])+0.005) & scores_func$lon >= (as.numeric(row["lon"])-0.005))$eff)
+  }
+
+origins_pos <- origins
+scores_long_pos <-filter(scores_long,stringr::str_detect(nearest_n, 'all') & stringr::str_detect(weight, 'no'))
+scores_pos <- left_join(scores_long_pos, origins_pos, by=c("fromId" = "id"), keep = FALSE)
+
+# Calulate initial efficiency for each block
+scores_pos$pop <- normalize_vec(scores_pos$pop)
+scores_pos$eff <- abs(scores_pos$pop - scores_pos$score)
+scores_pos$eff <- normalize_vec(scores_pos$eff)
+
+
+# Create dataframe for each amenity type
+scores_eff_gal <- filter(scores_pos,stringr::str_detect(type, 'gallery'))
+scores_eff_lib <- filter(scores_pos,stringr::str_detect(type, 'library or archives'))
+scores_eff_thea <- filter(scores_pos,stringr::str_detect(type, 'theatre/performance and concert hall'))
+scores_eff_mus <- filter(scores_pos,stringr::str_detect(type, 'museum'))
+
+# Create running efficiency scores
+scores_eff_all <- data.frame(fromId=factor(),type=factor(),score=numeric(),weight=factor(),nearest_n=factor(),pop=numeric(),lat=numeric(),lon=numeric(),eff=numeric())
+df_types <- list(scores_eff_gal,scores_eff_lib,scores_eff_thea,scores_eff_mus)
+for(df in df_types){
+  scores_func <- df
+  df$eff_ravg <- apply(df,1, func)
+  scores_eff_all <- rbind(scores_eff_all,df)
+}
+efficiency_frame <- scores_eff_all[,c(1,2,6:8,10)]
+```
+
+
+
+
+## 2) Dataset Wrangling Part II (NA Insertion)
+
+Each origin(fromId) should have x different scores where x is defined by:
+
+x = 4 amenity options = 4
+
+In addition to filling the empty NA rows for included IDs, there are also IDs
+that need to be re-added as not a single time was computed for these IDs.
+
+
+```{r}
+paste0('EFFICIENCY FRAME')
+
+# HOW MANY ROWS TO FILL IN EFFICIENCY FRAME?
+N <- uniqueN(efficiency_frame$fromId) * 4 # expected rows
+paste(glue('{nrow(efficiency_frame)} of {N} rows filled ({round((nrow(efficiency_frame) / N)*100, 2)}%)'))
+paste(N - nrow(efficiency_frame), 'to fill.')
+
+cat(paste0('\n')) # line break
+
+# HOW MANY ROWS TO ADD IN EFFICIENCY FRAME?
+# existing IDs that weren't included in ttm
+missing_blocks <- array(setdiff(origins$id, efficiency_frame$fromId))
+total_expected <- nrow(efficiency_frame) + length(missing_blocks) * 4 # only 4 values per origin
+paste(glue('{nrow(efficiency_frame)} of {total_expected} rows filled ({round((nrow(efficiency_frame) / total_expected)*100, 2)}%)'))
+paste(length(missing_blocks)*4, 'to add')
+```
+
+```{r}
+
+x <- 4
+
+# fill NA for all existing origin IDs
+filled_efficiency_frame <- NA_table_filler_eff(efficiency_frame)
+# add missing NAs to efficiency frame
+all_efficiency_frame <- NA_table_filler_eff(filled_efficiency_frame,
+                                       custom_idx = missing_blocks)
+
+```
+
+```{r}
+
+# check efficiency
+# there should be 32 counts per fromId
+eff_id_counts <- all_efficiency_frame %>% group_by(fromId) %>% summarise(n = n())
+unique(eff_id_counts$n)
+
+```
+
+
+Now lets add population data to the efficiency frame
+
+```{r}
+# right join with origins to include origins without transit access
+
+all_efficiency_frame <- right_join(all_efficiency_frame, origins, by = c('fromId' = 'id'))
+
+```
+
+```{r}
+
+## Export checkpoint
+write.csv(all_efficiency_frame, '../../data/efficiency/efficiency_frame.csv', row.names = FALSE)
+
+```
+
+
+### Import the dissemination block shape file
+```{r}
+canada_shape <- st_read("../../data/census2016_DBS_shp/DB_Van_CMA/DB_Van_CMA.shp", stringsAsFactors = FALSE)
+
+# select a greater metropolitan area
+metropolitan_area <- "Vancouver"
+
+# filter columns and rows
+vancouver_shape <- data.frame(canada_shape[which(canada_shape$CMANAME == metropolitan_area), c(1, 28)])
+
+# id to factor
+vancouver_shape$DBUID <- as.factor(vancouver_shape$DBUID)
+
+paste('Rows = ', nrow(vancouver_shape))
+head(vancouver_shape)
+```
+
+
+## 3) Interactive Visualization
+```{r}
+# join factor and geometry data 
+eff_viz_frame <- left_join(vancouver_shape, all_efficiency_frame, by = c('DBUID' = 'fromId'))
+
+# convert back to sf object
+eff_viz_frame_sf <- st_as_sf(eff_viz_frame)
+
+# convert to st object
+eff_viz_frame_st <- st_transform(eff_viz_frame_sf, crs = 4326)
+
+```
+
+
+
+## 4) Map HTML Exports
+
+```{r}
+# exclue NA in type
+type_name <- unique(eff_viz_frame_sf$type)
+
+for (amenity in type_name) { 
+  
+  # 4 efficiency maps
+  map_maker_efficiency(data = eff_viz_frame_st, amenity, output_dir = '../../data/html_maps/efficiency_maps')
+
+}
+```
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+

@@ -82,21 +82,12 @@ sum_score_fxn <- function(df, nearest_n = NULL, weight = FALSE, log_normalize_sc
 ##############################
 
 # function for NA grid expansion 
-NA_grid_maker <- function(id, df, isochrone = FALSE, efficiency = FALSE) {
+NA_grid_maker <- function(id, df, isochrone = FALSE) {
   all_amenities <- as.character(unique(df$type))
   # get missing amenities by indexing the fromId and keeping only unique types
   missing_amenities <- setdiff(all_amenities, unique(df$type[df$fromId == id]))
   
-  if (efficiency == TRUE) {
-    # create NA rows to append via expand.grid (creates a row for every factor combination)
-    NA_rows <- expand.grid('fromId' = id,
-                           'type' = missing_amenities,
-                           'pop' = NA,
-                           'lat' = NA,
-                           'lon' = NA,
-                           'eff_ravg' = NA, 
-                           stringsAsFactors = TRUE)
-  } else if (isochrone == FALSE) {
+  if (isochrone == FALSE) {
     # create NA rows to append via expand.grid (creates a row for every factor combination)
     NA_rows <- expand.grid('fromId' = id,
                          'type' = missing_amenities,
@@ -115,7 +106,7 @@ NA_grid_maker <- function(id, df, isochrone = FALSE, efficiency = FALSE) {
 }
 
 # function for actually filling data.tables with NA values
-NA_table_filler <- function(df, custom_idx = NULL, isochrone = FALSE, efficiency = FALSE) {
+NA_table_filler <- function(df, custom_idx = NULL, isochrone = FALSE) {
   # count each fromId occurence
   fromId_counts <- df %>% group_by(fromId) %>% mutate(n = n())
 
@@ -127,11 +118,11 @@ NA_table_filler <- function(df, custom_idx = NULL, isochrone = FALSE, efficiency
   }
 
   # get rows
-  filler_rows <- rbindlist(apply(id_arr, MARGIN = 1, FUN = NA_grid_maker, df = df, isochrone = isochrone, efficiency = efficiency))
+  filler_rows <- rbindlist(apply(id_arr, MARGIN = 1, FUN = NA_grid_maker, df = df, isochrone = isochrone))
   # append and order
   df <- rbindlist(list(df, filler_rows), use.names = TRUE) 
   
-  if (isochrone == FALSE & efficiency == FALSE) {
+  if (isochrone == FALSE) {
     df <- df %>% arrange(fromId, type, nearest_n, weight)
   } else {
     df <- df %>% arrange(fromId, type)
