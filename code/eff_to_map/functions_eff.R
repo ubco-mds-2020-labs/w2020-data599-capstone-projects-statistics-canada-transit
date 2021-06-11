@@ -15,6 +15,7 @@ normalize_vec <- function(vec, x=0.01, y=0.99, log = FALSE) {
   custom_norm_v
 }
 
+
 # Normalize all numeric columns in a dataframe to a custom range [x,y]
 
 normalize_df <- function(df, x = 0.01, y = 0.99, log = FALSE) {
@@ -39,9 +40,12 @@ NA_grid_maker_eff <- function(id, df) {
   # create NA rows to append via expand.grid (creates a row for every factor combination)
   NA_rows <- expand.grid('fromId' = id,
                          'type' = missing_amenities,
+                         'score' = NA,
                          'pop' = NA,
                          'lat' = NA,
                          'lon' = NA,
+                         'pop_norm' = NA,
+                         'eff' = NA,
                          'eff_ravg' = NA, 
                          stringsAsFactors = TRUE)
   NA_rows
@@ -109,32 +113,34 @@ map_maker_efficiency <- function(data, amenity, output_dir, view_map = FALSE) {
     # subset info
     polyg_subset <- data[data$type == amenity, ]
     
-    # score vector
-    score_vec <- polyg_subset$eff_ravg
+    # variable vector
+    variable <- polyg_subset$eff_ravg
     
     # colour palette 
-    Rd2Gn <- c("#e30606", "#fd8d3c", "#ffe669", "#cdff5e", "#64ed56")
-    pal_fun <- colorQuantile(palette = Rd2Gn, NULL, n = 5)
+  #  Rd2Gn <- c("#e30606", "#fd8d3c", "#ffe669", "#cdff5e", "#64ed56")
+    Rd2Gn <- c("#800080","#0000FF","#00FFFF", "#00FF00", "#FFFF00", "#FFA500", "#FF0000")
+    pal_fun <- colorQuantile(palette = Rd2Gn, NULL, n = 7)
     
     # popup # percentile(score_vec),
-    percentile <- ecdf(score_vec)
-    p_popup <- paste0("Accessibility Percentile: <strong>", round(percentile(score_vec), 2)*100, '%',"</strong>", 
-                      "<br>Block Population: <strong>", polyg_subset$pop,"</strong>",
+    percentile <- ecdf(polyg_subset$score)
+    p_popup <- paste0("Accessibility Percentile: <strong>", round(percentile(polyg_subset$score), 2)*100, '%',"</strong>", 
+                      "<br>Block Population: <strong>",  round(as.numeric(polyg_subset$pop.x), 2),"</strong>",
+                      "<br>Block Population Normalized: <strong>",  round(polyg_subset$pop_norm, 2),"</strong>",
                       "<br><br>Block ID: ", polyg_subset$DBUID,
-                      "<br>Running Efficiency Score: ", round(score_vec, 2))
+                      "<br>Running Efficiency Score: ", round(variable, 2))
   
         
   map <- leaflet(data = polyg_subset) %>%
       addPolygons(
         stroke = FALSE,  # remove polygon borders
-        fillColor = ~pal_fun(score_vec), # set fill colour with pallette fxn from aboc
+        fillColor = ~pal_fun(variable), # set fill colour with pallette fxn from aboc
         fillOpacity = 0.6, smoothFactor = 0.5, # aesthetics
         popup = p_popup) %>% # add message popup to each block
       addTiles() %>%
       setView(lng = -122.8, lat = 49.2, zoom = 11) %>%
       addLegend("bottomleft",  # location
                 pal=pal_fun,    # palette function
-                values=~score_vec,  # value to be passed to palette function
+                values=~variable,  # value to be passed to palette function
                 title = glue('{amn_name} Efficiency Access'))
     
   if (view_map == TRUE) {
