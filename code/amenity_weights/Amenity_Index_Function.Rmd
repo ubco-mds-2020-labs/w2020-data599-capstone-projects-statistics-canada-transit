@@ -27,11 +27,11 @@ Requires two dataset; *google_reviews_poi_with_hours.csv* and *vancouver_facilit
 ```{R message=FALSE, warning=FALSE}
 
 ### set w2020-data599 as working directory
-library_obj<-read.csv("data/raw/public_library_data.csv",fileEncoding="latin1")
-review_poi<-read_csv("data/clean/google_reviews_poi_with_hours.csv")
-van_poi<-read_csv("data/clean/vancouver_facilities_2.csv")
+library_obj<-read.csv("../../data/raw/public_library_data.csv",fileEncoding="latin1")
+review_poi<-read_csv("../../data/clean/google_reviews_poi_with_hours.csv")
+van_poi<-read_csv("../../data/clean/vancouver_facilities_2.csv")
 # import travel time matrix
-ttm <- read_csv('data/clean/ttm.csv')
+ttm <- read_csv('../../data/clean/ttm.csv')
 ```
 
 
@@ -67,7 +67,41 @@ merged_data%>%select(poi_name,Name,type,open_days,Total_hours,Rating,Total_Revie
 colnames(df)
 colnames(df) <- c("POI Name", "Google Place Name","Type","Open Days","Open Hours","Rating","Total Review","lat","lon")
 df[df == 0] <- NA
+
 missing_percentage<-colMeans(is.na(df))
+# 
+# df%>%gather(key = "key", value = "val",-type) %>%mutate(isna = is.na(val))%>%
+#   mutate(isna = is.na(val)) %>%
+#   group_by(type) %>%
+#   mutate(total = n()) %>%
+#   group_by(type, total, isna) %>%
+#   summarise(num.isna = n()) %>%
+#   mutate(pct = num.isna / total * 100)%>%filter(type %in% c("museum","gallery","theatre/performance and concert hall","library or archives"))->missing_poi
+
+
+# 
+# levels <-(missing_poi  %>% filter(isna == T) %>% arrange(desc(pct)))$type
+# 
+# label_txt<-missing_poi%>% filter(isna == T)%>%select(pct)
+# 
+# label_txt$pct<-floor(label_txt$pct)
+# 
+# 
+# missing_poi%>%
+#       ggplot() +
+#         geom_bar(aes(x = reorder(type, desc(pct)), 
+#                      y = pct, fill=isna), 
+#                  stat = 'identity', alpha=0.8) +
+#      geom_text(data=label_txt,aes(label =pct,x= reorder(type, desc(pct)),y=pct), size = 3,hjust=-1.1)+
+#       scale_x_discrete(limits = levels) +
+#       scale_fill_manual(name = "", 
+#                         values = c('steelblue', 'tomato3'), labels = c("Present", "Missing")) +
+#       coord_flip() +
+#       labs(title = "Percentage of missing values", x =
+#              'Variable', y = "% of missing values")
+
+
+
 
 missing.values <- df%>%
   gather(key = "key", value = "val") %>%
@@ -78,7 +112,7 @@ missing.values <- df%>%
   summarise(num.isna = n()) %>%
   mutate(pct = num.isna / total * 100)
 missing.values
-df
+
 
 levels <-(missing.values  %>% filter(isna == T) %>% arrange(desc(pct)))$key
 
@@ -103,6 +137,21 @@ p<-percentage.plot+ theme_minimal()
 p
 
 ggsave("amenity_missing.png", width = 5, height = 2)
+```
+
+```{R}
+#open_days+Total_hours+Rating+Total_Review
+agg_type<-aggregate(. ~ type, 
+          data = df, 
+          function(x) {
+                       sum(is.na(x))/length(x)*100
+                       }, 
+          na.action = NULL)
+
+f1<-function(x) {sum(!is.na(x))/length(x)}
+df
+agg_type%>%select(-poi_name,-lat,-lon)
+
 ```
 
 
