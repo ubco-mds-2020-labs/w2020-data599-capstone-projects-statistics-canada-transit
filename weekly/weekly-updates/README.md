@@ -21,8 +21,8 @@ Place your weekly status updates in this folder before your weekly meeting.
 ### Week 6 (June 7 - June 11)
 - Developed effiency model and maps (Graham) - 10 hours
 - Wrote method-dashboard section of the report (Graham) - 8 hours
-- Report formatting on Overleaf using latex (Yuxuan) - 1 hour
-- Wrote amenity methodology part (Yuxuan) - 5 hour
+- Report formatting on Overleaf using latex (Yuxuan) - 1.5 hours
+- Wrote amenity methodology part (Yuxuan) - 12 hours
 - Organized code (Yuxuan) - 3 hours
 
 ### Week 5 (May 31 - June 4)
@@ -34,12 +34,12 @@ Place your weekly status updates in this folder before your weekly meeting.
 - Developed functions to re-add NA values in the long score and isochrone frames. That way NA blocks can also be visualized (Luka)
 - Created time windows for weekdays and weekends as well as hourly change of average travel time for the nearest amenity (Rain)
 - Merged geometry data with DB data with time windows and developed Kepler.gl maps filtering by type of amensities (Rain)
-- Generated isochrone data from the travel time matrix (Yuxuan)
+- Generated isochrone data from the travel time matrix (Yuxuan) - 8 hours
 - Cleaned repository of all unused data/files and moved to archive (Luka)
-- Code merge: combined scripts for manipulating the travel time matrix (cleaning, scoring, etc.) and the scripts for visualization and output to have 1 main script for creating the HTML map renders. (Luka, Yuxuan)
-- Prepared presentation slides (All)
+- Code merge: combined scripts for manipulating the travel time matrix (cleaning, scoring, etc.) and the scripts for visualization and output to have 1 main script for creating the HTML map renders. (Luka, Yuxuan) - 15 hours
+- Prepared presentation slides (All) - 3 hours
 - Updated the scoring function (Rain, Luka)
-- Added the isochrone map on dashboard (Yuxuan)
+- Added the isochrone map on dashboard (Yuxuan) - 5 hours
 
 ### Week 4 (May 24 - May 28)
 - Created an outline for the final report (All)
@@ -47,7 +47,7 @@ Place your weekly status updates in this folder before your weekly meeting.
 - Explored downtown public library outlier point. Found that slight modifications of the coordinates fixes the problem which still has an unknown underlying cause (Luka)
 - Created HTML map renders for all score sets using a special score import function (Luka)
 - Team meeting and presentation preparation (All) - 3 hours
-- Created a general amenity index function which will return the amenity weights for any type of interest (Yuxuan)
+- Created a general amenity index function which will return the amenity weights for any type of interest (Yuxuan) -28 hours
 - Collected and merged library information - total area, number of annual visitors, volume of physical copies (Rain)
 
 ### Week 3 (May 17 - May 21)
@@ -60,9 +60,9 @@ Place your weekly status updates in this folder before your weekly meeting.
 - Fixed small errors in score set exports and finished interactive map score visualization in leaflet (Luka)
 - Started ggplot visualizations in ggplot, tmap, and leaflet libraries (Luka)
 - Wrote custom range normalization functions, scoring functions, improved score script comments, and created a accessibility score set folder (Luka)
-- Tested Facebook and Twitter API for review data (Yuxuan)
-- Generated opening days and hours data for point of interests from google place (Yuxuan)
-- Built POI (Museum) Index weight using the google place data (Yuxuan)
+- Tested Facebook and Twitter API for review data (Yuxuan) - 15 hours
+- Generated opening days and hours data for point of interests from google place (Yuxuan) - 8 hours
+- Built POI (Museum) Index weight using the google place data (Yuxuan) - 25 hours
 
 ### Week 2 (May 10 - May 14)
 - Removed duplicate travel time matrix csvs (Luka)
@@ -70,9 +70,9 @@ Place your weekly status updates in this folder before your weekly meeting.
 - Computed travel time matrix and created visualization using UrbanAccess with Pandana (Rain)
 - Updated the CDB data wrangling file to output a CSV with standardized column names (Graham) - 2 hours
 - Discussed and planned out the high level data manipulation and score computing (All) - 6 hours
-- Built web scraper to collect cultural POIT review counts (Yuxuan)
+- Built web scraper to collect cultural POIT review counts (Yuxuan) - 8 hours
 - Set up and filled the Github project log up until May 5 (Luka)
-- Software research and exploration. See Wiki links in Taiga.io (Yuxuan + Luka)
+- Software research and exploration. See Wiki links in Taiga.io (Yuxuan + Luka) - 15 hours
 - CDB and ODACF data filtering (Graham + Rain) - 3 hours
 - Develop time matrix using R5 (All) - 8 hours
 - Discussed method to develop score computations (All) - 8 hours
