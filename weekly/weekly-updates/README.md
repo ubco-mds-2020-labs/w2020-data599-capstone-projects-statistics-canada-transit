@@ -21,6 +21,9 @@ Place your weekly status updates in this folder before your weekly meeting.
 ### Week 6 (June 7 - June 11)
 - Developed effiency model and maps (Graham) - 10 hours
 - Wrote method-dashboard section of the report (Graham) - 8 hours
+- Report formatting on Overleaf using latex (Yuxuan) - 1 hour
+- Wrote amenity methodology part (Yuxuan) - 5 hour
+- Organized code (Yuxuan) - 3 hours
 
 ### Week 5 (May 31 - June 4)
 - Worked on publishing dashboard (Graham) - 8 hours
