@@ -1,0 +1,183 @@
+---
+title: "overlay_stops"
+author: "Yuxuan"
+date: "12/06/2021"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+
+```{R}
+# Read in MBTA Station txt file
+
+rawlocs <- read.csv(file="../../data/clean/stops.txt", head=TRUE,sep=",")
+
+View(rawlocs)
+```
+
+```{R}
+
+# Select columns with MBTA T stations
+
+station_locs <- rawlocs
+
+# Select the columns we want and change columns name to latitude and longitude
+
+station_locs <- station_locs[c("stop_id","stop_name","stop_lat","stop_lon")]
+
+colnames(station_locs)[3] <- "latitude"
+
+colnames(station_locs)[4] <- "longitude"
+
+
+# Convert the columns imported as a factor to characters
+
+station_locs$stop_id <- as.character(station_locs$stop_id)
+
+station_locs$stop_name <- as.character(station_locs$stop_name)
+
+```
+
+
+```{R}
+station_locs <-station_locs[!is.na(as.numeric(station_locs$stop_id)), ]
+unique(station_locs$stop_id)%>%length()
+
+
+
+
+```
+```{R}
+
+
+
+# Map the stations
+
+mbta_subway <- leaflet(station_locs) %>%
+
+addTiles() %>%
+
+setView(lng = -122.8, lat = 49.2, zoom = 11)%>%
+
+addCircles(~longitude, ~latitude, weight = 1, radius=5,
+color="#0073B2", stroke = TRUE, fillOpacity = 0.8) %>%
+
+addLegend("bottomleft", colors="#0073B2", labels="Data Source: MBTA Developer Portal", title="MBTA Subway Stations")
+
+# show the map
+
+mbta_subway
+```
+
+
+
+```{r}
+canada_shape <- st_read("../../data/census2016_DBS_shp/DB_Van_CMA/DB_Van_CMA.shp", stringsAsFactors = FALSE)
+
+# select a greater metropolitan area
+metropolitan_area <- "Vancouver"
+
+# filter columns and rows
+vancouver_shape <- data.frame(canada_shape[which(canada_shape$CMANAME == metropolitan_area), c(1, 28)])
+
+# id to factor
+vancouver_shape$DBUID <- as.factor(vancouver_shape$DBUID)
+
+paste('Rows = ', nrow(vancouver_shape))
+head(vancouver_shape)
+```
+```{R}
+all_scores_long<-fread(file.path('../../data/html_mapping_data/scores_long.csv'))
+# id to factor
+all_scores_long$fromId<- as.factor(all_scores_long$fromId)
+```
+
+
+## 4) Interactive Visualization
+```{r}
+# join factor and geometry data 
+scores_viz_frame <- left_join(vancouver_shape, all_scores_long, by = c('DBUID' = 'fromId'))
+
+# convert back to sf object
+scores_viz_frame_sf <- st_as_sf(scores_viz_frame)
+
+
+# convert to st object
+scores_viz_frame_st <- st_transform(scores_viz_frame_sf, crs = 4326)
+
+```
+
+
+
+## Visualization Function
+
+```{r}
+
+# Mapping function for score tables
+map_maker_scores <- function(data, amenity, weight, nearest_n, output_dir, view_map = FALSE,add_stop=TRUE) {
+  
+  amn_name <- amenity %>%
+                str_to_title() %>%
+                str_replace_all('Or', 'or') %>%
+                str_replace('And', 'and') %>%
+                str_replace('/Performance', '')
+
+  file_name <- glue('{amn_name} - wt({weight}) - n({str_to_upper(nearest_n)})')
+  print(paste('Current Map:', file_name))
+
+  # subset info
+  polyg_subset <- data[data$type == amenity & data$weight == weight & data$nearest_n == nearest_n, ]
+  
+  # score vector
+  score_vec <- polyg_subset$score
+  
+  # colour palette 
+  Rd2Gn <- c("#e30606", "#fd8d3c", "#ffe669", "#cdff5e", "#64ed56")
+  pal_fun <- colorQuantile(palette = Rd2Gn, NULL, n = 5)
+  
+  # popup # percentile(score_vec),
+  percentile <- ecdf(score_vec)
+  p_popup <- paste0("Accessibility Percentile: <strong>", round(percentile(score_vec), 2)*100, '%',"</strong>", 
+                    "<br>Block Population: <strong>", polyg_subset$pop,"</strong>",
+                    "<br><br>Block ID: ", polyg_subset$DBUID,
+                    "<br>Raw Score: ", round(score_vec, 2))
+  
+  
+  map <- leaflet(data = polyg_subset) %>%
+    addPolygons(
+      stroke = FALSE,  # remove polygon borders
+      fillColor = ~pal_fun(score_vec), # set fill colour with pallette fxn from aboc
+      fillOpacity = 0.6, smoothFactor = 0.5, # aesthetics
+      popup = p_popup) %>% # add message popup to each block
+    addTiles() %>%
+    setView(lng = -122.8, lat = 49.2, zoom = 11) %>%
+    addLegend("bottomleft",  # location
+              pal=pal_fun,    # palette function
+              values=~score_vec,  # value to be passed to palette function
+              title = glue('{amn_name} Transit Access'))
+  
+  if(add_stop==TRUE){
+    map%>%addCircles(data=station_locs,~longitude, ~latitude, weight = 1, radius=5,
+color="#0073B2", stroke = TRUE, fillOpacity = 0.8)->map
+  }
+  
+  if (view_map == TRUE) {
+    return(map)
+  } else {
+    mapshot(map, url = glue("{getwd()}/{output_dir}/{file_name}.html"))
+  }
+  
+}
+```
+
+
+
+```{r}
+map_maker_scores(scores_viz_frame_st, amenity="museum",weight="yes",nearest_n="all",view_map = T,add_stop=F)
+```
+
+
+
