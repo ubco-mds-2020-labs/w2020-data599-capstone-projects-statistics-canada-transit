@@ -20,11 +20,8 @@ View(rawlocs)
 
 ```{R}
 
-# Select columns with MBTA T stations
 
 station_locs <- rawlocs
-
-# Select the columns we want and change columns name to latitude and longitude
 
 station_locs <- station_locs[c("stop_id","stop_name","stop_lat","stop_lon")]
 
@@ -49,27 +46,6 @@ unique(station_locs$stop_id)%>%length()
 
 
 
-```
-```{R}
-
-
-
-# Map the stations
-
-mbta_subway <- leaflet(station_locs) %>%
-
-addTiles() %>%
-
-setView(lng = -122.8, lat = 49.2, zoom = 11)%>%
-
-addCircles(~longitude, ~latitude, weight = 1, radius=5,
-color="#0073B2", stroke = TRUE, fillOpacity = 0.8) %>%
-
-addLegend("bottomleft", colors="#0073B2", labels="Data Source: MBTA Developer Portal", title="MBTA Subway Stations")
-
-# show the map
-
-mbta_subway
 ```
 
 
@@ -176,7 +152,7 @@ color="#0073B2", stroke = TRUE, fillOpacity = 0.8)->map
 
 
 ```{r}
-map_maker_scores(scores_viz_frame_st, amenity="museum",weight="yes",nearest_n="all",view_map = T,add_stop=F)
+map_maker_scores(scores_viz_frame_st, amenity="museum",weight="yes",nearest_n="all",view_map = T,add_stop=T)
 ```
 
 
