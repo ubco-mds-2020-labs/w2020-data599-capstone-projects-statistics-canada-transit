@@ -50,15 +50,20 @@ knit_print.summary <- lemon_print
 # Function to calculate efficiency withing 'X' degrees of each block
 
 #import scores
+db_prox <- read.csv('../../data/clean/vancouver_Prox.csv', stringsAsFactors = FALSE)
 scores_long <- read.csv('../../data/efficiency/initial_scores.csv', stringsAsFactors = FALSE)
 origins <- fread(file.path("../../data/clean", "vancouver_db.csv"), stringsAsFactors = FALSE)[, .(id, pop, lat, lon)]
 
 origins$pop <- str_replace_all(origins$pop, ',', '')
 
 # change col types
+db_prox[db_prox==".."]<-NA
+db_prox[db_prox=="F"]<-NA
+db_prox <- data.frame(lapply(db_prox,as.numeric))
 scores_long$fromId <- as.factor(scores_long$fromId)
 origins$pop <- as.numeric(origins$pop)  
 origins$id <- as.factor(origins$id)  
+db_prox$id <- as.factor(db_prox$id)
 n_origins <- nrow(origins)
 paste('Origin Rows: ', n_origins)
 ```
@@ -66,19 +71,91 @@ paste('Origin Rows: ', n_origins)
 
 # 2 Processing efficiency scores
 ```{r}
-  func <- function(row){
-    mean(filter(scores_func, scores_func$lat <= (as.numeric(row["lat"])+0.005) & scores_func$lat >= (as.numeric(row["lat"])-0.005) & scores_func$lon <= (as.numeric(row["lon"])+0.005) & scores_func$lon >= (as.numeric(row["lon"])-0.005))$eff)
+  rollingAvg <- function(row){
+    mean(filter(scores_func, scores_func$lat <= (as.numeric(row["lat"])+0.005) & scores_func$lat >= (as.numeric(row["lat"])-0.005) & scores_func$lon <= (as.numeric(row["lon"])+0.005) & scores_func$lon >= (as.numeric(row["lon"])-0.005))$eff) 
   }
+
+rollingAvg_prox <- function(row){
+  prox_score <- filter(scores_func, scores_func$lat <= (as.numeric(row["lat"])+0.005) & scores_func$lat >= (as.numeric(row["lat"])-0.005) & scores_func$lon <= (as.numeric(row["lon"])+0.005) & scores_func$lon >= (as.numeric(row["lon"])-0.005)) %>% select(9:19) %>% colMeans(na.rm = TRUE) %>% mean()
+  if(is.na(prox_score)){
+    prox_score <- 0
+  }
+  return(prox_score)
+}
+
 
 origins_pos <- origins
 scores_long_pos <-filter(scores_long,stringr::str_detect(nearest_n, 'all') & stringr::str_detect(weight, 'no'))
 scores_pos <- left_join(scores_long_pos, origins_pos, by=c("fromId" = "id"), keep = FALSE)
+scores_pos <- left_join(scores_pos, db_prox,  by=c("fromId" = "id"), keep = FALSE, set)
+
 
 # Calulate initial efficiency for each block
-scores_pos$pop_norm <- normalize_vec(scores_pos$pop)
-#scores_pos$eff <- 1-abs(scores_pos$pop - scores_pos$score)
-scores_pos$eff <- scores_pos$pop_norm - scores_pos$score
-#scores_pos$eff <- normalize_vec(scores_pos$eff)
+scores_pos$pop_norm_squared <- normalize_vec(scores_pos$pop)
+
+
+# Create dataframe for each amenity type
+scores_prox_gal <- filter(scores_pos,stringr::str_detect(type, 'gallery'))
+scores_prox_lib <- filter(scores_pos,stringr::str_detect(type, 'library or archives'))
+scores_prox_thea <- filter(scores_pos,stringr::str_detect(type, 'theatre/performance and concert hall'))
+scores_prox_mus <- filter(scores_pos,stringr::str_detect(type, 'museum'))
+
+# Create running efficiency scores
+scores_prox_score <- data.frame(fromId=factor(),type=factor(),score=numeric(),weight=factor(),nearest_n=factor(),pop=numeric(),lat=numeric(),lon=numeric(),eff=numeric())
+df_types_prox <- list(scores_prox_gal,scores_prox_lib,scores_prox_thea,scores_prox_mus)
+
+for(df in df_types_prox){
+  scores_func <- df
+  df$prox_score <- apply(df,1, rollingAvg_prox)
+  scores_prox_score <- rbind(scores_prox_score,df)
+}
+
+
+scores_prox_score$eff <- normalize_vec_nonAbs(scores_prox_score$prox_score - scores_prox_score$score)
+
+# Create dataframe for each amenity type
+scores_eff_gal <- filter(scores_prox_score,stringr::str_detect(type, 'gallery'))
+scores_eff_lib <- filter(scores_prox_score,stringr::str_detect(type, 'library or archives'))
+scores_eff_thea <- filter(scores_prox_score,stringr::str_detect(type, 'theatre/performance and concert hall'))
+scores_eff_mus <- filter(scores_prox_score,stringr::str_detect(type, 'museum'))
+
+scores_eff_all <- data.frame(fromId=factor(),type=factor(),score=numeric(),weight=factor(),nearest_n=factor(),pop=numeric(),lat=numeric(),lon=numeric(),eff=numeric())
+df_types_eff <- list(scores_eff_gal,scores_eff_lib,scores_eff_thea,scores_eff_mus)
+
+for(df in df_types_eff){
+  scores_func <- df
+  df$eff_ravg <- normalize_vec_nonAbs(apply(df,1, rollingAvg))
+  scores_eff_all <- rbind(scores_eff_all,df)
+}
+efficiency_frame <- scores_eff_all %>% select(1:3,6:8,20:22)
+```
+
+
+#Backup
+
+
+  rollingAvg <- function(row){
+    mean(filter(scores_func, scores_func$lat <= (as.numeric(row["lat"])+0.005) & scores_func$lat >= (as.numeric(row["lat"])-0.005) & scores_func$lon <= (as.numeric(row["lon"])+0.005) & scores_func$lon >= (as.numeric(row["lon"])-0.005))$eff) 
+  }
+
+rollingAvg_prox <- function(row){
+  filter(scores_func, scores_func$lat <= (as.numeric(row["lat"])+0.005) & scores_func$lat >= (as.numeric(row["lat"])-0.005) & scores_func$lon <= (as.numeric(row["lon"])+0.005) & scores_func$lon >= (as.numeric(row["lon"])-0.005)) %>% select(9:19) %>% colMeans(na.rm = TRUE) %>% mean()
+  }
+
+
+origins_pos <- origins
+scores_long_pos <-filter(scores_long,stringr::str_detect(nearest_n, 'all') & stringr::str_detect(weight, 'no'))
+scores_pos <- left_join(scores_long_pos, origins_pos, by=c("fromId" = "id"), keep = FALSE)
+scores_pos <- left_join(scores_pos, db_prox,  by=c("fromId" = "id"), keep = FALSE, set)
+
+
+# Calulate initial efficiency for each block
+scores_pos$pop_norm_squared <- 2*normalize_vec(scores_pos$pop)
+
+#eff_score_df <- scores_pos %>% select(1,7:19)
+
+
+scores_pos$eff <- (scores_pos$pop_norm + scores_pos$prox_emp) - scores_pos$score
 
 
 # Create dataframe for each amenity type
@@ -92,11 +169,13 @@ scores_eff_all <- data.frame(fromId=factor(),type=factor(),score=numeric(),weigh
 df_types <- list(scores_eff_gal,scores_eff_lib,scores_eff_thea,scores_eff_mus)
 for(df in df_types){
   scores_func <- df
-  df$eff_ravg <- apply(df,1, func)
+  df$eff_ravg <- apply(df,1, rollingAvg)
+  apply(df,1, rollingAvg_prox) 
   scores_eff_all <- rbind(scores_eff_all,df)
 }
-efficiency_frame <- scores_eff_all[,c(1:3,6:11)]
-```
+efficiency_frame <- scores_eff_all[,c(1:3,6:12)]
+
+
 
 
 
@@ -212,19 +291,12 @@ for (amenity in type_name) {
   # 4 efficiency maps
   map_maker_efficiency(data = eff_viz_frame_st, amenity,# view_map = TRUE,
                        output_dir = '../../data/html_maps/efficiency_maps')
+  map_maker_efficiency_quant(data = eff_viz_frame_st, amenity,# view_map = TRUE,
+                       output_dir = '../../data/html_maps/efficiency_maps_quant')
 
 }
 
-
 ```
-
-
-```{r}
-plot(density(eff_viz_frame_st$eff_ravg, na.rm = TRUE))
-```
-
-
-
 
 
 
