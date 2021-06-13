@@ -11,7 +11,7 @@ knitr::opts_chunk$set(echo = TRUE)
 
 
 ```{R}
-# Read in MBTA Station txt file
+# Read Vancouver Station txt file
 
 rawlocs <- read.csv(file="../../data/clean/stops.txt", head=TRUE,sep=",")
 
@@ -28,7 +28,6 @@ station_locs <- station_locs[c("stop_id","stop_name","stop_lat","stop_lon")]
 colnames(station_locs)[3] <- "latitude"
 
 colnames(station_locs)[4] <- "longitude"
-
 
 # Convert the columns imported as a factor to characters
 
@@ -90,6 +89,7 @@ scores_viz_frame_st <- st_transform(scores_viz_frame_sf, crs = 4326)
 
 ## Visualization Function
 
+#### Adding a new parameter, user could choose either having bus stop layer or not 
 ```{r}
 
 # Mapping function for score tables
@@ -120,7 +120,8 @@ map_maker_scores <- function(data, amenity, weight, nearest_n, output_dir, view_
                     "<br>Block Population: <strong>", polyg_subset$pop,"</strong>",
                     "<br><br>Block ID: ", polyg_subset$DBUID,
                     "<br>Raw Score: ", round(score_vec, 2))
-  
+  stop_popup<-paste0("STOP ID: <strong>",station_locs$stop_id,"</strong>",
+                     "<br>STOP Name: <strong>",station_locs$stop_name)
   
   map <- leaflet(data = polyg_subset) %>%
     addPolygons(
@@ -137,7 +138,7 @@ map_maker_scores <- function(data, amenity, weight, nearest_n, output_dir, view_
   
   if(add_stop==TRUE){
     map%>%addCircles(data=station_locs,~longitude, ~latitude, weight = 1, radius=5,
-color="#0073B2", stroke = TRUE, fillOpacity = 0.8)->map
+color="#0073B2", stroke = TRUE, fillOpacity = 0.8,popup =stop_popup)->map
   }
   
   if (view_map == TRUE) {
