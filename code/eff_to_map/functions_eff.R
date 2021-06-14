@@ -150,11 +150,11 @@ plot_densities <- function(score_frame1, score_frame2, titl1 = 'Plot 1', titl2 =
 
 
 # Efficiency maps
-map_maker_efficiency_num <- function(data, mapType = "Efficiency Quantile", output_dir, view_map = FALSE) {
+map_maker_efficiency_num <- function(data, mapType = "Efficiency NumericV2", output_dir, view_map = FALSE) {
   
   amn_name <- mapType
   
-  file_name <- "Efficiency Numerical Map"
+  file_name <- glue('{amn_name} map')
   print(paste('Current Map:', file_name))
   
   # subset info
@@ -190,7 +190,7 @@ map_maker_efficiency_num <- function(data, mapType = "Efficiency Quantile", outp
     addLegend("bottomleft",  # location
               pal=pal_fun,    # palette function
               values=~variable,  # value to be passed to palette function
-              title = glue('{amn_name} Numeric Efficiency '))
+              title = glue('{amn_name} Map'))
   
   if (view_map == TRUE) {
     return(map)
@@ -200,7 +200,7 @@ map_maker_efficiency_num <- function(data, mapType = "Efficiency Quantile", outp
   
 }
 
-map_maker_efficiency_quant <- function(data, mapType = "Efficiency Quantile", output_dir, view_map = FALSE) {
+map_maker_efficiency_quant <- function(data, mapType = "Efficiency QuantileV2", output_dir, view_map = FALSE) {
   
   amn_name <- mapType
   
@@ -241,7 +241,7 @@ map_maker_efficiency_quant <- function(data, mapType = "Efficiency Quantile", ou
     addLegend("bottomleft",  # location
               pal=pal_fun,    # palette function
               values=~variable,  # value to be passed to palette function
-              title = glue('{amn_name} Quantile Map'))
+              title = glue('{amn_name} Map'))
   
   if (view_map == TRUE) {
     return(map)
