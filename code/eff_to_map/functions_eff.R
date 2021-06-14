@@ -42,18 +42,20 @@ normalize_df <- function(df, x = 0.01, y = 0.99, log = FALSE) {
 
 # function for NA grid expansion 
 NA_grid_maker_eff <- function(id, df) {
-  all_amenities <- as.character(unique(df$type))
+#  all_amenities <- as.character(unique(df$mean_score))
   # get missing amenities by indexing the fromId and keeping only unique types
-  missing_amenities <- setdiff(all_amenities, unique(df$type[df$fromId == id]))
+#  missing_amenities <- setdiff(all_amenities, unique(df$fromId == id))
+  #missing_amenities <- unique(df$fromId == id)
   
   # create NA rows to append via expand.grid (creates a row for every factor combination)
   NA_rows <- expand.grid('fromId' = id,
-                         'type' = missing_amenities,
-                         'score' = NA,
+                         'mean_score' = NA,
                          'pop' = NA,
                          'lat' = NA,
                          'lon' = NA,
+                         'pop_norm_squared' = NA,
                          'prox_score' = NA,
+                         'scoreCorrection' = NA,
                          'eff' = NA,
                          'eff_ravg' = NA, 
                          stringsAsFactors = TRUE)
@@ -77,11 +79,51 @@ NA_table_filler_eff <- function(df, custom_idx = NULL) {
   # append and order
   df <- rbindlist(list(df, filler_rows), use.names = TRUE) 
   
-  df <- df %>% arrange(fromId, type)
+  df <- df %>% arrange(fromId)
   
   
   df
 }
+
+##############################
+## RUNNING AVERAGE FUNCTIONS
+##############################
+
+rollingAvg <- function(row){
+  mean(filter(scores_prox_score, scores_prox_score$lat <= (as.numeric(row["lat"])+0.00675) & scores_prox_score$lat >= (as.numeric(row["lat"])-0.00675) & scores_prox_score$lon <= (as.numeric(row["lon"])+0.00675) & scores_prox_score$lon >= (as.numeric(row["lon"])-0.005))$eff) 
+}
+
+rollingAvg_prox <- function(row){
+  prox_score <- filter(scores_pos, scores_pos$lat <= (as.numeric(row["lat"])+0.00675) & scores_pos$lat >= (as.numeric(row["lat"])-0.00675) & scores_pos$lon <= (as.numeric(row["lon"])+0.00675) & scores_pos$lon >= (as.numeric(row["lon"])-0.00675)) %>% select(6:15) %>% colMeans(na.rm = TRUE) %>% mean()
+  if(is.na(prox_score)){
+    prox_score <- 0
+  }
+  return(prox_score)
+}
+
+
+# Get mean traffic count within 500m of each block
+db_trafic <- function(row){
+  mean(filter(trafic_data, trafic_data$LATITUDE <= (as.numeric(row["lat"])+0.0675) & trafic_data$LATITUDE >= (as.numeric(row["lat"])-0.0675) & trafic_data$LONGITUDE <= (as.numeric(row["lon"])+0.0675) & trafic_data$LONGITUDE >= (as.numeric(row["lon"])-0.0675))$TraficCount) 
+}
+
+
+# Iterate Through each row
+# Get the most recent traffic survey for each row
+is_NA <- function(row, col = 21){
+  if(is.na(row[col+3]) & col>0){
+    is_NA(row = row, col = col-1)
+  } else if(col == 0 ){
+    0
+  } else {
+    row[col+3]  
+  }
+}
+getAll_Data <- function(row){
+  is_NA(row)
+}
+
+
 
 
 ##############################
@@ -108,34 +150,32 @@ plot_densities <- function(score_frame1, score_frame2, titl1 = 'Plot 1', titl2 =
 
 
 # Efficiency maps
-map_maker_efficiency <- function(data, amenity, output_dir, view_map = FALSE) {
+map_maker_efficiency_num <- function(data, mapType = "Efficiency Quantile", output_dir, view_map = FALSE) {
   
-  amn_name <- amenity %>%
-    str_to_title() %>%
-    str_replace_all('Or', 'or') %>%
-    str_replace('And', 'and') %>%
-    str_replace('/Performance', '')
+  amn_name <- mapType
   
-  file_name <- glue('{amn_name} efficiency map')
+  file_name <- "Efficiency Numerical Map"
   print(paste('Current Map:', file_name))
   
   # subset info
-  polyg_subset <- data[data$type == amenity, ]
+  polyg_subset <- data
   
   # variable vector
   variable <- polyg_subset$eff_ravg
   
   # colour palette 
-  #  Rd2Gn <- c("#e30606", "#fd8d3c", "#ffe669", "#cdff5e", "#64ed56")
-  Rd2Gn <- c("#800080","#0000FF","#00FFFF", "#00FF00", "#FFFF00", "#FFA500", "#FF0000")
-  pal_fun <- colorNumeric(palette = Rd2Gn, NULL, n = 7)
+  Bl2Rd <- c("#FF0000", "#FA8072", "#F9A7B0", "#FFFFFF", "#ADDFFF", "#1589FF", "#0000FF")
+  pal_fun <- colorNumeric(palette = Bl2Rd, NULL, n = 7)
   
   # popup # percentile(score_vec),
   percentile <- ecdf(polyg_subset$score)
   p_popup <- paste0("Accessibility Percentile: <strong>", round(percentile(polyg_subset$score), 2)*100, '%',"</strong>", 
-                    "<br>Block Population: <strong>",  round(as.numeric(polyg_subset$pop.x), 2),"</strong>",
+                    "<br>Block Normalized Population: <strong>",  round(as.numeric(polyg_subset$pop_norm_squared), 2),"</strong>",
+                    "<br>Admenity Proximity score: <strong>",  round(polyg_subset$prox_score, 2),"</strong>",
+                    "<br>Traffic correction: <strong>",  round(polyg_subset$scoreCorrection, 2),"</strong>",
                     "<br>Efficiency score: <strong>",  round(polyg_subset$eff, 2),"</strong>",
                     "<br><br>Block ID: ", polyg_subset$DBUID,
+                    "<br><br>Block Population: ",  round(as.numeric(polyg_subset$pop.y), 2),
                     "<br>Running Efficiency Score: ", round(variable, 2))
   
   
@@ -150,7 +190,7 @@ map_maker_efficiency <- function(data, amenity, output_dir, view_map = FALSE) {
     addLegend("bottomleft",  # location
               pal=pal_fun,    # palette function
               values=~variable,  # value to be passed to palette function
-              title = glue('{amn_name} Efficiency Access'))
+              title = glue('{amn_name} Numeric Efficiency '))
   
   if (view_map == TRUE) {
     return(map)
@@ -160,34 +200,33 @@ map_maker_efficiency <- function(data, amenity, output_dir, view_map = FALSE) {
   
 }
 
-map_maker_efficiency_quant <- function(data, amenity, output_dir, view_map = FALSE) {
+map_maker_efficiency_quant <- function(data, mapType = "Efficiency Quantile", output_dir, view_map = FALSE) {
   
-  amn_name <- amenity %>%
-    str_to_title() %>%
-    str_replace_all('Or', 'or') %>%
-    str_replace('And', 'and') %>%
-    str_replace('/Performance', '')
+  amn_name <- mapType
   
-  file_name <- glue('{amn_name} efficiency map')
+  file_name <- glue('{amn_name} map')
   print(paste('Current Map:', file_name))
   
   # subset info
-  polyg_subset <- data[data$type == amenity, ]
+  polyg_subset <- data
   
   # variable vector
   variable <- polyg_subset$eff_ravg
   
   # colour palette 
-  #  Rd2Gn <- c("#e30606", "#fd8d3c", "#ffe669", "#cdff5e", "#64ed56")
-  Rd2Gn <- c("#800080","#0000FF","#00FFFF", "#00FF00", "#FFFF00", "#FFA500", "#FF0000")
-  pal_fun <- colorQuantile(palette = Rd2Gn, NULL, n = 7)
+ # A2RV1 <- c("#8B0000", "#FA8072", "#F9A7B0", "#FFFFFF", "#ADDFFF", "#1589FF", "#0000A5")
+  Bl2Rd <- c("#FF0000", "#FA8072", "#F9A7B0", "#FFFFFF", "#ADDFFF", "#1589FF", "#0000FF")
+  pal_fun <- colorQuantile(palette = Bl2Rd, NULL, n = 7)
   
   # popup # percentile(score_vec),
   percentile <- ecdf(polyg_subset$score)
   p_popup <- paste0("Accessibility Percentile: <strong>", round(percentile(polyg_subset$score), 2)*100, '%',"</strong>", 
-                    "<br>Block Population: <strong>",  round(as.numeric(polyg_subset$pop.x), 2),"</strong>",
+                    "<br>Block Normalized Population: <strong>",  round(as.numeric(polyg_subset$pop_norm_squared), 2),"</strong>",
+                    "<br>Admenity Proximity score: <strong>",  round(polyg_subset$prox_score, 2),"</strong>",
+                    "<br>Traffic correction: <strong>",  round(polyg_subset$scoreCorrection, 2),"</strong>",
                     "<br>Efficiency score: <strong>",  round(polyg_subset$eff, 2),"</strong>",
                     "<br><br>Block ID: ", polyg_subset$DBUID,
+                    "<br><br>Block Population: ",  round(as.numeric(polyg_subset$pop.y), 2),
                     "<br>Running Efficiency Score: ", round(variable, 2))
   
   
@@ -202,7 +241,7 @@ map_maker_efficiency_quant <- function(data, amenity, output_dir, view_map = FAL
     addLegend("bottomleft",  # location
               pal=pal_fun,    # palette function
               values=~variable,  # value to be passed to palette function
-              title = glue('{amn_name} Efficiency Access'))
+              title = glue('{amn_name} Quantile Map'))
   
   if (view_map == TRUE) {
     return(map)
