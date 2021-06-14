@@ -94,7 +94,7 @@ scores_prox_score$scoreCorrection[is.na(scores_prox_score$scoreCorrection)] <- m
 scores_prox_score$scoreCorrection <- normalize_vec(scores_prox_score$scoreCorrection)+1
 
 # Calculate efficiency score
-scores_prox_score$eff <- normalize_vec_nonAbs(scores_prox_score$prox_score - scores_prox_score$mean_score/scores_prox_score$scoreCorrection)
+scores_prox_score$eff <- normalize_vec_nonAbs((scores_prox_score$prox_score - scores_prox_score$mean_score)/scores_prox_score$scoreCorrection)
 
 # Calculate running efficiency score 
 scores_prox_score$eff_ravg <- normalize_vec_nonAbs(apply(scores_prox_score,1, rollingAvg))
