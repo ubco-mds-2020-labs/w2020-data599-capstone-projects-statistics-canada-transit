@@ -153,19 +153,19 @@ plot_densities <- function(score_frame1, score_frame2, titl1 = 'Plot 1', titl2 =
         ggtitle(titl2)
   gridExtra::grid.arrange(x, y)
 }
-
 # Mapping function for score tables
-map_maker_scores <- function(data, amenity, weight, nearest_n, output_dir, view_map = FALSE) {
+map_maker_scores <- function(data,bus_data, amenity, weight, nearest_n, add_stop, output_dir, view_map = FALSE) {
   
   amn_name <- amenity %>%
-                str_to_title() %>%
-                str_replace_all('Or', 'or') %>%
-                str_replace('And', 'and') %>%
-                str_replace('/Performance', '')
-
+    str_to_title() %>%
+    str_replace_all('Or', 'or') %>%
+    str_replace('And', 'and') %>%
+    str_replace('/Performance', '')
+  
+  
   file_name <- glue('{amn_name} - wt({weight}) - n({str_to_upper(nearest_n)})')
   print(paste('Current Map:', file_name))
-
+  
   # subset info
   polyg_subset <- data[data$type == amenity & data$weight == weight & data$nearest_n == nearest_n, ]
   
@@ -182,6 +182,8 @@ map_maker_scores <- function(data, amenity, weight, nearest_n, output_dir, view_
                     "<br>Block Population: <strong>", polyg_subset$pop,"</strong>",
                     "<br><br>Block ID: ", polyg_subset$DBUID,
                     "<br>Raw Score: ", round(score_vec, 2))
+  stop_popup<-paste0("STOP ID: <strong>",bus_data$stop_id,"</strong>",
+                     "<br>STOP Name: <strong>",bus_data$stop_name)
   
   map <- leaflet(data = polyg_subset) %>%
     addPolygons(
@@ -195,6 +197,15 @@ map_maker_scores <- function(data, amenity, weight, nearest_n, output_dir, view_
               pal=pal_fun,    # palette function
               values=~score_vec,  # value to be passed to palette function
               title = glue('{amn_name} Transit Access'))
+  if(add_stop==TRUE & view_map==FALSE){
+    map%>%addCircles(data=bus_data,~longitude, ~latitude, weight = 1, radius=5,
+                     color="#0073B2", stroke = TRUE, fillOpacity = 0.8,popup =stop_popup)->map
+    
+    file_name <- glue('{amn_name} - wt({weight}) - n({str_to_upper(nearest_n)})-bus')
+    print(paste('Current Map:', file_name))
+    
+    mapshot(map, url = glue("{getwd()}/{output_dir}/{file_name}.html"))
+  }
   
   if (view_map == TRUE) {
     return(map)
@@ -203,6 +214,7 @@ map_maker_scores <- function(data, amenity, weight, nearest_n, output_dir, view_
   }
   
 }
+
 
 # Efficiency maps
 map_maker_efficiency <- function(data, amenity, output_dir, view_map = FALSE) {
@@ -256,18 +268,72 @@ map_maker_efficiency <- function(data, amenity, output_dir, view_map = FALSE) {
 }
 
 
-# Mapping function for isochrone tables
-map_maker_isochrone <- function(data, amenity, output_dir, view_map = FALSE) {
+# Efficiency maps
+map_maker_efficiency <- function(data, amenity, output_dir, view_map = FALSE) {
   
   amn_name <- amenity %>%
-                str_to_title() %>%
-                str_replace_all('Or', 'or') %>%
-                str_replace('And', 'and') %>%
-                str_replace('/Performance', '')
+    str_to_title() %>%
+    str_replace_all('Or', 'or') %>%
+    str_replace('And', 'and') %>%
+    str_replace('/Performance', '')
+  
+  file_name <- glue('{amn_name} efficiency map')
+  print(paste('Current Map:', file_name))
+  
+  # subset info
+  polyg_subset <- data[data$type == amenity, ]
+  
+  # score vector
+  score_vec <- polyg_subset$eff_ravg
+  
+  # colour palette 
+  Rd2Gn <- c("#e30606", "#fd8d3c", "#ffe669", "#cdff5e", "#64ed56")
+  pal_fun <- colorQuantile(palette = Rd2Gn, NULL, n = 5)
+  
+  # popup # percentile(score_vec),
+  percentile <- ecdf(score_vec)
+  p_popup <- paste0("Accessibility Percentile: <strong>", round(percentile(score_vec), 2)*100, '%',"</strong>", 
+                    "<br>Block Population: <strong>", polyg_subset$pop,"</strong>",
+                    "<br><br>Block ID: ", polyg_subset$DBUID,
+                    "<br>Running Efficiency Score: ", round(score_vec, 2))
+  
+  
+  map <- leaflet(data = polyg_subset) %>%
+    addPolygons(
+      stroke = FALSE,  # remove polygon borders
+      fillColor = ~pal_fun(score_vec), # set fill colour with pallette fxn from aboc
+      fillOpacity = 0.6, smoothFactor = 0.5, # aesthetics
+      popup = p_popup) %>% # add message popup to each block
+    addTiles() %>%
+    setView(lng = -122.8, lat = 49.2, zoom = 11) %>%
+    addLegend("bottomleft",  # location
+              pal=pal_fun,    # palette function
+              values=~score_vec,  # value to be passed to palette function
+              title = glue('{amn_name} Transit Access'))
+  
+  if (view_map == TRUE) {
+    return(map)
+  } else {
+    mapshot(map, url = glue("{getwd()}/{output_dir}/{file_name}.html"))
+  }
+  
+}
+
+
+
+# Mapping function for isochrone tables
+
+map_maker_isochrone <- function(data, bus_data,amenity, add_bus,output_dir, view_map = FALSE) {
+  
+  amn_name <- amenity %>%
+    str_to_title() %>%
+    str_replace_all('Or', 'or') %>%
+    str_replace('And', 'and') %>%
+    str_replace('/Performance', '')
   
   file_name <- glue('{amn_name} Transit Isochrone')
   print(paste('Current Map:', file_name))
-
+  
   # subset info
   polyg_subset <- data[data$type == amenity, ]
   
@@ -278,24 +344,32 @@ map_maker_isochrone <- function(data, amenity, output_dir, view_map = FALSE) {
   pal_fun <- colorFactor(
     palette = c("#3ef000", "#c5eb00", "#fbff00", "#e9cb00", "#e78600", "#e44200", "#e20000"),
     levels = sort(unique(polyg_subset$time_groups))
-    )
-
+  )
+  
   p_popup <- paste0("Nearest: <strong>", amn_name,"</strong>", 
                     "<br>Travel Time: <strong><", time_groups, " minutes</strong>")
-        
-  map <- leaflet(data = polyg_subset) %>%
-      addPolygons(
-        stroke = FALSE,  # remove polygon borders
-        fillColor = ~pal_fun(time_groups), # set fill colour with pallette fxn from aboc
-        fillOpacity = 0.7, smoothFactor = 0.5, # aesthetics
-        popup = p_popup) %>% # add message popup to each block
-      addTiles() %>%
-      setView(lng = -122.8, lat = 49.2, zoom = 11) %>%
-      addLegend("bottomleft",  # location
-                pal=pal_fun,    # palette function
-                values=~time_groups,  # value to be passed to palette function
-                title = glue('{amn_name} Transit Access'))
+  stop_popup<-paste0("STOP ID: <strong>",bus_data$stop_id,"</strong>",
+                     "<br>STOP Name: <strong>",bus_data$stop_name)
   
+  map <- leaflet(data = polyg_subset) %>%
+    addPolygons(
+      stroke = FALSE,  # remove polygon borders
+      fillColor = ~pal_fun(time_groups), # set fill colour with pallette fxn from aboc
+      fillOpacity = 0.7, smoothFactor = 0.5, # aesthetics
+      popup = p_popup) %>% # add message popup to each block
+    addTiles() %>%
+    setView(lng = -122.8, lat = 49.2, zoom = 11) %>%
+    addLegend("bottomleft",  # location
+              pal=pal_fun,    # palette function
+              values=~time_groups,  # value to be passed to palette function
+              title = glue('{amn_name} Transit Access'))
+  if(add_stop==TRUE & view_map==FALSE){
+    map%>%addCircles(data=bus_data,~longitude, ~latitude, weight = 1, radius=5,
+                     color="#0073B2", stroke = TRUE, fillOpacity = 0.8,popup =stop_popup)->map
+    file_name <- glue('{amn_name} Transit Isochrone with bus stops')
+    print(paste('Current Map:', file_name))
+    mapshot(map, url = glue("{getwd()}/{output_dir}/{file_name}.html"))
+  }
   if (view_map == TRUE) {
     return(map)
   } else {
