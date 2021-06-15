@@ -75,13 +75,13 @@ paste('Origin Rows: ', n_origins)
 origins_pos <- origins
 
 #Get mean accessibility score for each block
-scores_long_pos <-filter(scores_long,stringr::str_detect(nearest_n, 'all') & stringr::str_detect(weight, 'no'))[,c(1,3)] %>% group_by(fromId) %>% summarise(mean_score = mean(score))
+scores_long_pos <-filter(scores_long,stringr::str_detect(nearest_n, '1') & stringr::str_detect(weight, 'no'))[,c(1,3)] %>% group_by(fromId) %>% summarise(mean_score = mean(score))
 
 scores_pos <- left_join(scores_long_pos, origins_pos, by=c("fromId" = "id"), keep = FALSE)
 scores_pos <- left_join(scores_pos, db_prox,  by=c("fromId" = "id"), keep = FALSE, set)
 
 # Normalize the population of each block
-scores_pos$pop_norm_squared <- normalize_vec(scores_pos$pop)
+scores_pos$pop_norm <- normalize_vec(scores_pos$pop)
 
 # Get mean of all proximity measures within 500 m of each data block
 scores_prox_score <- scores_pos[,c(1:5,16)]
@@ -91,16 +91,23 @@ scores_prox_score$prox_score <- normalize_vec(apply(scores_pos,1, rollingAvg_pro
 trafic_data$TraficCount <- apply(trafic_data, 1, getAll_Data)
 scores_prox_score$scoreCorrection <- apply(scores_prox_score,1,db_trafic)
 scores_prox_score$scoreCorrection[is.na(scores_prox_score$scoreCorrection)] <- mean(scores_prox_score$scoreCorrection, na.rm = TRUE)
-scores_prox_score$scoreCorrection <- normalize_vec(scores_prox_score$scoreCorrection)+1
+scores_prox_score$scoreCorrection <- normalize_vec(scores_prox_score$scoreCorrection)
 
 # Calculate efficiency score
-scores_prox_score$eff <- normalize_vec_nonAbs((scores_prox_score$prox_score - scores_prox_score$mean_score)/scores_prox_score$scoreCorrection)
+scores_prox_score$eff <- normalize_vec_nonAbs((scores_prox_score$mean_score/scores_prox_score$scoreCorrection)-(scores_prox_score$pop_norm/scores_prox_score$prox_score))
+
+#scores_prox_score$eff[scores_prox_score$fromId=='59151708030'] <- NA
 
 # Calculate running efficiency score 
 scores_prox_score$eff_ravg <- normalize_vec_nonAbs(apply(scores_prox_score,1, rollingAvg))
 
+scores_prox_score$eff_ravg[scores_prox_score$fromId=='59151708030'] <- NA
+scores_prox_score$eff_ravg <- normalize_vec_nonAbs(scores_prox_score$eff_ravg)
+
 efficiency_frame <- scores_prox_score
 ```
+
+
 
 
 

@@ -53,7 +53,7 @@ NA_grid_maker_eff <- function(id, df) {
                          'pop' = NA,
                          'lat' = NA,
                          'lon' = NA,
-                         'pop_norm_squared' = NA,
+                         'pop_norm' = NA,
                          'prox_score' = NA,
                          'scoreCorrection' = NA,
                          'eff' = NA,
@@ -150,7 +150,7 @@ plot_densities <- function(score_frame1, score_frame2, titl1 = 'Plot 1', titl2 =
 
 
 # Efficiency maps
-map_maker_efficiency_num <- function(data, mapType = "Efficiency NumericV2", output_dir, view_map = FALSE) {
+map_maker_efficiency_num <- function(data, mapType = "Efficiency NumericV3", output_dir, view_map = FALSE) {
   
   amn_name <- mapType
   
@@ -170,7 +170,7 @@ map_maker_efficiency_num <- function(data, mapType = "Efficiency NumericV2", out
   # popup # percentile(score_vec),
   percentile <- ecdf(polyg_subset$score)
   p_popup <- paste0("Accessibility Percentile: <strong>", round(percentile(polyg_subset$score), 2)*100, '%',"</strong>", 
-                    "<br>Block Normalized Population: <strong>",  round(as.numeric(polyg_subset$pop_norm_squared), 2),"</strong>",
+                    "<br>Block Normalized Population: <strong>",  round(as.numeric(polyg_subset$pop_norm), 2),"</strong>",
                     "<br>Admenity Proximity score: <strong>",  round(polyg_subset$prox_score, 2),"</strong>",
                     "<br>Traffic correction: <strong>",  round(polyg_subset$scoreCorrection, 2),"</strong>",
                     "<br>Efficiency score: <strong>",  round(polyg_subset$eff, 2),"</strong>",
@@ -200,7 +200,7 @@ map_maker_efficiency_num <- function(data, mapType = "Efficiency NumericV2", out
   
 }
 
-map_maker_efficiency_quant <- function(data, mapType = "Efficiency QuantileV2", output_dir, view_map = FALSE) {
+map_maker_efficiency_quant <- function(data, mapType = "Efficiency QuantileV3", output_dir, view_map = FALSE) {
   
   amn_name <- mapType
   
@@ -221,7 +221,7 @@ map_maker_efficiency_quant <- function(data, mapType = "Efficiency QuantileV2", 
   # popup # percentile(score_vec),
   percentile <- ecdf(polyg_subset$score)
   p_popup <- paste0("Accessibility Percentile: <strong>", round(percentile(polyg_subset$score), 2)*100, '%',"</strong>", 
-                    "<br>Block Normalized Population: <strong>",  round(as.numeric(polyg_subset$pop_norm_squared), 2),"</strong>",
+                    "<br>Block Normalized Population: <strong>",  round(as.numeric(polyg_subset$pop_norm), 2),"</strong>",
                     "<br>Admenity Proximity score: <strong>",  round(polyg_subset$prox_score, 2),"</strong>",
                     "<br>Traffic correction: <strong>",  round(polyg_subset$scoreCorrection, 2),"</strong>",
                     "<br>Efficiency score: <strong>",  round(polyg_subset$eff, 2),"</strong>",
