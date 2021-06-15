@@ -15,14 +15,6 @@ normalize_vec <- function(vec, x=0.01, y=0.99, log = FALSE) {
   custom_norm_v
 }
 
-# Normalize vector to a custom range [x,y]
-
-normalize_vec_nonAbs <- function(vec, x=-0.99, y=0.99, log = FALSE) {
-  if (log == TRUE) { vec <- log(vec) }
-  norm_v <- (vec - min(vec))/(max(vec) - min(vec))
-  custom_norm_v <- norm_v*(y - x) + x
-  custom_norm_v
-}
 
 
 # Normalize all numeric columns in a dataframe to a custom range [x,y]
@@ -42,34 +34,27 @@ normalize_df <- function(df, x = 0.01, y = 0.99, log = FALSE) {
 
 # function for NA grid expansion 
 NA_grid_maker_eff <- function(id, df) {
-#  all_amenities <- as.character(unique(df$mean_score))
-  # get missing amenities by indexing the fromId and keeping only unique types
-#  missing_amenities <- setdiff(all_amenities, unique(df$fromId == id))
-  #missing_amenities <- unique(df$fromId == id)
   
   # create NA rows to append via expand.grid (creates a row for every factor combination)
   NA_rows <- expand.grid('fromId' = id,
                          'mean_score' = NA,
                          'pop' = NA,
-                         'lat' = NA,
-                         'lon' = NA,
-                         'pop_norm_squared' = NA,
-                         'prox_score' = NA,
-                         'scoreCorrection' = NA,
+                         'amn_dens' = NA,
+                         'trafficScore' = NA,
+                         'need' = NA,
                          'eff' = NA,
-                         'eff_ravg' = NA, 
                          stringsAsFactors = TRUE)
   NA_rows
 }
 
 # function for actually filling data.tables with NA values
-NA_table_filler_eff <- function(df, custom_idx = NULL) {
+NA_table_filler_eff <- function(df, custom_idx = NULL,  x = 1) {
   # count each fromId occurence
   fromId_counts <- df %>% group_by(fromId) %>% mutate(n = n())
 
   if (is.null(custom_idx)) {
     # create a fromId array using Ids that don't meet the [x] count requirement
-    id_arr <- array(unique(fromId_counts[fromId_counts$n < x, ]$fromId))
+    id_arr <- array(unique(fromId_counts[fromId_counts$n <= x, ]$fromId))
   } else {
     id_arr <- custom_idx
   }
@@ -89,22 +74,13 @@ NA_table_filler_eff <- function(df, custom_idx = NULL) {
 ## RUNNING AVERAGE FUNCTIONS
 ##############################
 
-rollingAvg <- function(row){
-  mean(filter(scores_prox_score, scores_prox_score$lat <= (as.numeric(row["lat"])+0.00675) & scores_prox_score$lat >= (as.numeric(row["lat"])-0.00675) & scores_prox_score$lon <= (as.numeric(row["lon"])+0.00675) & scores_prox_score$lon >= (as.numeric(row["lon"])-0.005))$eff) 
-}
-
-rollingAvg_prox <- function(row){
-  prox_score <- filter(scores_pos, scores_pos$lat <= (as.numeric(row["lat"])+0.00675) & scores_pos$lat >= (as.numeric(row["lat"])-0.00675) & scores_pos$lon <= (as.numeric(row["lon"])+0.00675) & scores_pos$lon >= (as.numeric(row["lon"])-0.00675)) %>% select(6:15) %>% colMeans(na.rm = TRUE) %>% mean()
-  if(is.na(prox_score)){
-    prox_score <- 0
-  }
-  return(prox_score)
-}
-
 
 # Get mean traffic count within 500m of each block
 db_trafic <- function(row){
-  mean(filter(trafic_data, trafic_data$LATITUDE <= (as.numeric(row["lat"])+0.0675) & trafic_data$LATITUDE >= (as.numeric(row["lat"])-0.0675) & trafic_data$LONGITUDE <= (as.numeric(row["lon"])+0.0675) & trafic_data$LONGITUDE >= (as.numeric(row["lon"])-0.0675))$TraficCount) 
+  mean(filter(trafic_data, trafic_data$LATITUDE <= (as.numeric(row["lat"])+0.0675) & 
+                trafic_data$LATITUDE >= (as.numeric(row["lat"])-0.0675) & 
+                trafic_data$LONGITUDE <= (as.numeric(row["lon"])+0.0675) & 
+                trafic_data$LONGITUDE >= (as.numeric(row["lon"])-0.0675))$TraficCount) 
 }
 
 
@@ -150,7 +126,7 @@ plot_densities <- function(score_frame1, score_frame2, titl1 = 'Plot 1', titl2 =
 
 
 # Efficiency maps
-map_maker_efficiency_num <- function(data, mapType = "Efficiency NumericV2", output_dir, view_map = FALSE) {
+map_maker_efficiency_num <- function(data, mapType = "Efficiency NumericV3", output_dir, view_map = FALSE) {
   
   amn_name <- mapType
   
@@ -161,22 +137,21 @@ map_maker_efficiency_num <- function(data, mapType = "Efficiency NumericV2", out
   polyg_subset <- data
   
   # variable vector
-  variable <- polyg_subset$eff_ravg
+  variable <- polyg_subset$eff
   
   # colour palette 
-  Bl2Rd <- c("#FF0000", "#FA8072", "#F9A7B0", "#FFFFFF", "#ADDFFF", "#1589FF", "#0000FF")
-  pal_fun <- colorNumeric(palette = Bl2Rd, NULL, n = 7)
+  Bl2Rd <- c("#FF0000", "#FA8072", "#F9A7B0", "#FFFFFF", "#FFFFFF", "#FFFFFF", "#ADDFFF", "#1589FF", "#0000FF")
+  pal_fun <- colorNumeric(palette = Bl2Rd, NULL, n = 9)
   
   # popup # percentile(score_vec),
-  percentile <- ecdf(polyg_subset$score)
-  p_popup <- paste0("Accessibility Percentile: <strong>", round(percentile(polyg_subset$score), 2)*100, '%',"</strong>", 
-                    "<br>Block Normalized Population: <strong>",  round(as.numeric(polyg_subset$pop_norm_squared), 2),"</strong>",
-                    "<br>Admenity Proximity score: <strong>",  round(polyg_subset$prox_score, 2),"</strong>",
-                    "<br>Traffic correction: <strong>",  round(polyg_subset$scoreCorrection, 2),"</strong>",
-                    "<br>Efficiency score: <strong>",  round(polyg_subset$eff, 2),"</strong>",
-                    "<br><br>Block ID: ", polyg_subset$DBUID,
-                    "<br><br>Block Population: ",  round(as.numeric(polyg_subset$pop.y), 2),
-                    "<br>Running Efficiency Score: ", round(variable, 2))
+  percentile <- ecdf(polyg_subset$mean_score)
+  p_popup <- paste0("Efficiency Score: ", round(variable, 2),
+                    "<br><br>Accessibility Score: <strong>", round(polyg_subset$mean_score, 2),"</strong>",
+                    "<br>Needs Score:  <strong>", round((1/3)*(polyg_subset$pop+ polyg_subset$trafficScore+ polyg_subset$amn_dens), 2),
+                    "<br><br>Population Score: <strong>",  round(polyg_subset$pop, 2),"</strong>",
+                    "<br>Traffic score: <strong>",  round(polyg_subset$trafficScore, 2),"</strong>",
+                    "<br>Facility density: <strong>",  round(polyg_subset$amn_dens, 2),"</strong>",
+                    "<br><br>Block ID: ", polyg_subset$DBUID)
   
   
   map <- leaflet(data = polyg_subset) %>%
@@ -200,7 +175,7 @@ map_maker_efficiency_num <- function(data, mapType = "Efficiency NumericV2", out
   
 }
 
-map_maker_efficiency_quant <- function(data, mapType = "Efficiency QuantileV2", output_dir, view_map = FALSE) {
+map_maker_efficiency_quant <- function(data, mapType = "Efficiency QuantileV3", output_dir, view_map = FALSE) {
   
   amn_name <- mapType
   
@@ -211,24 +186,23 @@ map_maker_efficiency_quant <- function(data, mapType = "Efficiency QuantileV2", 
   polyg_subset <- data
   
   # variable vector
-  variable <- polyg_subset$eff_ravg
+  variable <- polyg_subset$eff
   
   # colour palette 
  # A2RV1 <- c("#8B0000", "#FA8072", "#F9A7B0", "#FFFFFF", "#ADDFFF", "#1589FF", "#0000A5")
   Bl2Rd <- c("#FF0000", "#FA8072", "#F9A7B0", "#FFFFFF", "#ADDFFF", "#1589FF", "#0000FF")
-  pal_fun <- colorQuantile(palette = Bl2Rd, NULL, n = 7)
+  Bl2Rd10 <- c("#FF0000", "#F9A7B0", "#FFFFFF", "#FFFFFF", "#FFFFFF", "#FFFFFF", "#FFFFFF", "#FFFFFF", "#ADDFFF", "#1589FF")
+  pal_fun <- colorQuantile(palette = Bl2Rd10, NULL, n = 10)
   
   # popup # percentile(score_vec),
-  percentile <- ecdf(polyg_subset$score)
-  p_popup <- paste0("Accessibility Percentile: <strong>", round(percentile(polyg_subset$score), 2)*100, '%',"</strong>", 
-                    "<br>Block Normalized Population: <strong>",  round(as.numeric(polyg_subset$pop_norm_squared), 2),"</strong>",
-                    "<br>Admenity Proximity score: <strong>",  round(polyg_subset$prox_score, 2),"</strong>",
-                    "<br>Traffic correction: <strong>",  round(polyg_subset$scoreCorrection, 2),"</strong>",
-                    "<br>Efficiency score: <strong>",  round(polyg_subset$eff, 2),"</strong>",
-                    "<br><br>Block ID: ", polyg_subset$DBUID,
-                    "<br><br>Block Population: ",  round(as.numeric(polyg_subset$pop.y), 2),
-                    "<br>Running Efficiency Score: ", round(variable, 2))
-  
+  #percentile <- ecdf(polyg_subset$mean_score)
+  p_popup <- paste0("Efficiency Score: ", round(variable, 2),
+                    "<br><br>Accessibility Score: <strong>", round(polyg_subset$mean_score, 2),"</strong>",
+                    "<br>Needs Score:  <strong>", round((1/3)*(polyg_subset$pop+ polyg_subset$trafficScore+ polyg_subset$amn_dens), 2),
+                    "<br><br>Population Score: <strong>",  round(polyg_subset$pop, 2),"</strong>",
+                    "<br>Traffic score: <strong>",  round(polyg_subset$trafficScore, 2),"</strong>",
+                    "<br>Facility density: <strong>",  round(polyg_subset$amn_dens, 2),"</strong>",
+                    "<br><br>Block ID: ", polyg_subset$DBUID)
   
   map <- leaflet(data = polyg_subset) %>%
     addPolygons(
