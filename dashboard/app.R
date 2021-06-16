@@ -66,7 +66,7 @@ ui <- shinyUI(
                         )
                ),
                
-               tabPanel("Interprettable Isochrones",
+               tabPanel("Isochrones",
                         div(class="outer",
                             
                             # styles
