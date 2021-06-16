@@ -114,9 +114,6 @@ head(destinations)
 ```
 
 
-
-
-
 ### 3. Setting Travel Constraints
 
 - For each computed travel time via transit, we set constraints to model more 
@@ -156,42 +153,77 @@ of 30 minutes.
 
 # collect each travel time matrix from every hour
 all_ttms <- list()
+all_hours <- c()
 
-# computing for May 14/15/16 (Fri/Sat/Sun)
-for (day in 14:16) {
-  # computing from 7am to 7pm
-  for (time in 7:19) {
+# time range from 07:00 to 19:00
+list1 <- 7:19
+
+
+for (day in 14:16) {  # May 14=Fri, 15=Sat, 16=Sun
+  
+  hourly <- c()
+  t1 <- c()
+  
+  for (time in 7:19) {        # 7 to 19 hours
     
     departure_datetime <- as.POSIXct(glue("{day}-05-2021 {time}:00:00"), format="%d-%m-%Y %H:%M:%S")
     
     ttm <- travel_time_matrix(r5r_core = r5r_core,
-                              origins = origins,
-                              destinations = destinations,
-                              departure_datetime = departure_datetime,
-                              time_window = 30,
-                              
-                              # constraints
-                              mode = mode,
-                              max_walk_dist = max_walk_dist,
-                              max_trip_duration = max_trip_duration,
-                              max_rides = max_rides,
-                              verbose = FALSE)
+                          origins = origins,
+                          destinations = destinations,
+                          departure_datetime = departure_datetime,
+                          time_window = 30,
+                          
+                          # constrains
+                          mode = mode,
+                          max_walk_dist = max_walk_dist,
+                          max_trip_duration = max_trip_duration,
+                          max_rides = max_rides,
+                          verbose = FALSE)
+    
+    # collect time for each trip based on the number of travel time (row) computed by r5r
+    hourly <- append(hourly, nrow(ttm))
     
     # do NOT use rbind(all_ttm, ttm), it is insultingly slow
     # append to a list then use rbindlist
-    all_ttms <-  list.append(all_ttms, ttm) 
+    all_ttms <-  list.append(all_ttms, ttm)
     
     print(glue('Progress: {round(((day-14)*12 + time-6)/37*100, 1)}%'))
-    
   }
+  
+# To add time column for each day (hourly)
+
+  for (i in 1:length(hourly)) {  # number of travel time computed per hour depends on r5r
+    
+    t <- rep(list1[i], times = hourly[i])
+    t1 <- append(t1, t)
+  }
+  
+  t0 <- t1[1:sum(hourly[1:3])]
+  
+  t0 <- paste0("0", t0)
+  t1[1:sum(hourly[1:3])] <- t0
+  
+  t2 <- mapply(function(x,y) paste0(rep(x,y), collapse = ""), 0, 4 - nchar(t1))
+  t1 <- paste0(t1, t2)
+  
+  # convert to time format
+  t1 <- format(strptime(t1, format="%H%M"), format = "%H:%M") 
+  
+  all_hours <-  append(all_hours, t1)
+  
 }
 
-# Fast way to bind all data.tables
+# Fast way to bind all data.frames
+
 TTM <- rbindlist(all_ttms)
+
+# Add time column to the travel time matrix
+all_hours_ttms <- cbind(all_hours, TTM)
 
 print('COMPLETED')
 
-summary(TTM)
+summary(all_hours_ttms)
 ```
 
 
@@ -228,7 +260,6 @@ summary(TTM_agg)
 ```
 
 
-
 ### 6. Fixing Odd Values in sd_time
 
 **NA standard deviations**
@@ -260,6 +291,7 @@ summary(TTM_agg)
 
 ```
 
+
 ### 7. Exporting the Travel Time Matrix for Further Work
 
 - This summarizes our primary method for the first step in efficient
@@ -269,6 +301,12 @@ transit network analysis: **Obtaining Realistic Travel Time Data**
 
 # for compressed output - otherwise file is too big to be pushed to github
 library('readr')
+
+# Export the travel time matrix with time windows (for nearest isochrone)
+
+write_csv(all_hours_ttms, "../../data/3_computed/main_travel_time_matrix_with_timeWindow.csv.gz")
+
+# Export the travel time matrix with aggregated avg and sd (for score)
 
 write_csv(TTM_agg, "../../data/3_computed/main_travel_time_matrix--time_aggregated.csv.gz")
 
