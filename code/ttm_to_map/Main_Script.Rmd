@@ -173,6 +173,9 @@ paste('Origins considered:', round((length(unique(ttm$fromId))/n_origins)*100, 2
 paste('Destinations considered:', round(length(unique(ttm$toId))/n_amenities*100, 2), '%')
 paste('Rows = ', nrow(ttm))
 
+
+
+
 ```
 
 

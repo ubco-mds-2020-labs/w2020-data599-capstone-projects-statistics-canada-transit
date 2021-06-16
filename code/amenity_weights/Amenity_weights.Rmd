@@ -208,9 +208,6 @@ check <- all(unique(ttm$toId) %in% unique(amenity_wts$id))
 paste('Are all the ttm amenity IDs in the weighted IDs set? (needs to be true for the join to work) =', check)
 
 
-
-
-
 ```
 
 
