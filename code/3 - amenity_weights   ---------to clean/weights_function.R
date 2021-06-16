@@ -1,7 +1,5 @@
 
-  
-
-weights < -function(data, Amenity) {
+weights <- function(data, Amenity) {
 
   # point of interest type
   poi_type <- data %>%
@@ -11,7 +9,8 @@ weights < -function(data, Amenity) {
   # replace zero with NA
   poi_type[poi_type == 0] <- NA
   missing_percentage <- colMeans(is.na(poi_type))
-  paste('Missing Value %'); paste(missing_percentage)
+  paste('Missing Value %') 
+  paste(missing_percentage)
 
   # fill NA with column mean 
   poi_type <- na_mean(poi_type)

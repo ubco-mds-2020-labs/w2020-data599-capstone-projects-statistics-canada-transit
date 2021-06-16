@@ -33,11 +33,11 @@ knit_print.summary <- lemon_print
 
 source('weights_function.R')
 
-library_obj<-read.csv("../../data/raw/public_library_data.csv",fileEncoding="latin1")
-review_poi<-read_csv("../../data/clean/google_reviews_poi_with_hours.csv")
-van_poi<-read_csv("../../data/clean/vancouver_facilities_2.csv")
+library_obj<-read.csv("../../data/1_raw/amenities/2018_bc_public_library_data.csv",fileEncoding="latin1")
+review_poi<-read_csv("../../data/2_clean/amenity_weights/amenity_google_data.csv")
+van_poi<-read_csv("../../data/2_clean/vancouver_facilities.csv")
 ### import travel time matrix
-ttm <- read_csv('../../data/clean/ttm.csv')
+ttm <- read_csv('../../data/3_computed/travel_time_matrices--time_unaggregated/ttm.csv')
 ```
 
 #### Merge data review_poi and van_poi
@@ -71,7 +71,7 @@ van_list = c('Richmond','Vancouver','Burnaby','Township of Langley','North Vanco
             'Coquitlam','Delta','Fort Langley','White Rock','Pitt Meadows','Port Coquitlam', 'West Vancouver')
 
 # select those only in big vancouver area
-library_obj%>%filter(CITY%in%van_list)->library_obj
+library_obj%>%filter(CITY %in%van_list)->library_obj
 
 # select column and rename them
 colnames(library_obj)
@@ -91,7 +91,7 @@ colMeans(is.na(lib_df))
 #### select relevent variable 
 merged_data%>%select(poi_name,Name,type,open_days,Total_hours,Rating,Total_Review,lat,lon)->df
 colnames(df) <- c("POI Name", "Google Place Name","Type","Open Days","Open Hours","Rating","Total Review","lat","lon")
-df%>%filter(Type=="library or archives")->df_lib
+df%>%filter(Type=="library or archives")%>%as.data.frame()->df_lib
 
 # left join 
 
