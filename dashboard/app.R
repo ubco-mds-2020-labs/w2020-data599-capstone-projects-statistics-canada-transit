@@ -20,7 +20,7 @@ addResourcePath('effmap', paste0(getwd(), effmap_dir)) # 'effmap' is the name of
 
 ui <- shinyUI(
     navbarPage("Transit Accessibility Dashboard",
-               tabPanel("Interactive Transit Accessibility Map",
+               tabPanel("Scores",
                         div(class="outer",
                             
                             # styles
@@ -44,57 +44,79 @@ ui <- shinyUI(
                            )
                ),
                
+               tabPanel("Kepler.gl",
+                        div(class="outer",
+                            
+                            # styles
+                            tags$head(includeCSS("styles.css"), includeScript("gomap.js")),
+                            
+                            # kepler.gl html map
+                            htmlOutput('kepler'),
+                            
+                            # options panel
+                            absolutePanel(id = "controls", class = "panel panel-default",
+                                          fixed = TRUE, draggable = TRUE,
+                                          top = 60, left = "auto", right = 20, bottom = "auto",
+                                          width = 330, height = "auto",
+                                          h2("Accessibility Explorer"),
+                                          selectInput(inputId = "type_kep", label = "Amenity Type", choices = amenity_factor)),
+                            
+                            # citations
+                            # tags$div(id="cite", 'Data compiled for ', tags$em('Citation Here'), ' by Author (Publisher, Year).')
+                        )
+               ),
+               
+               tabPanel("Interprettable Isochrones",
+                        div(class="outer",
+                            
+                            # styles
+                            tags$head(includeCSS("styles.css"), includeScript("gomap.js")),
+                            
+                            # get the map
+                            htmlOutput('map_iso'),
+                            
+                            # options panel
+                            absolutePanel(id = "controls", class = "panel panel-default",
+                                          fixed = TRUE, draggable = TRUE,
+                                          top = 60, left = "auto", right = 20, bottom = "auto",
+                                          width = 330, height = "auto",
+                                          h2("Accessibility Explorer"),
+                                          selectInput(inputId = "type_iso", label = "Amenity Type", choices = amenity_factor)),
+                            
+                            # citations
+                            # tags$div(id="cite", 'Data compiled for ', tags$em('Citation Here'), ' by Author (Publisher, Year).')
+                        )
+               ),
+               
+               tabPanel("Network Efficiency",
+                        tabPanel("Interprettable Isochrones",
+                                 div(class="outer",
+                                     
+                                     # styles
+                                     tags$head(includeCSS("styles.css"), includeScript("gomap.js")),
+                                     
+                                     # get the map
+                                     htmlOutput('map_eff'),
+                                     
+                                     # options panel
+                                     absolutePanel(id = "controls", class = "panel panel-default",
+                                                   fixed = TRUE, draggable = TRUE,
+                                                   top = 60, left = "auto", right = 20, bottom = "auto",
+                                                   width = 330, height = "auto",
+                                                   h2("Accessibility Explorer"),
+                                                   selectInput(inputId = "type_eff", label = "Amenity Type", choices = amenity_factor)),
+                                     
+                                     # citations
+                                     # tags$div(id="cite", 'Data compiled for ', tags$em('Citation Here'), ' by Author (Publisher, Year).')
+                                 )
+                        ),
+               ),
+               
+               
                navbarMenu("More",
                           "----",
                           "Visualizations",
-                          tabPanel("Interprettable Isochrones",
-                                   div(class="outer",
-                                       
-                                       # styles
-                                       tags$head(includeCSS("styles.css"), includeScript("gomap.js")),
-                                       
-                                       # get the map
-                                        htmlOutput('map_iso'),
-                                       
-                                       # options panel
-                                       absolutePanel(id = "controls", class = "panel panel-default",
-                                                     fixed = TRUE, draggable = TRUE,
-                                                     top = 60, left = "auto", right = 20, bottom = "auto",
-                                                     width = 330, height = "auto",
-                                                     h2("Accessibility Explorer"),
-                                                     selectInput(inputId = "type_iso", label = "Amenity Type", choices = amenity_factor)),
-                                       
-                                       # citations
-                                      # tags$div(id="cite", 'Data compiled for ', tags$em('Citation Here'), ' by Author (Publisher, Year).')
-                                      )
-                          ),
                           
-                          tabPanel("Kepler Visualizations",
-                            htmlOutput('kepler'),
-                          ),
-                          tabPanel("Network Efficiency",
-                                   tabPanel("Interprettable Isochrones",
-                                            div(class="outer",
-                                                
-                                                # styles
-                                                tags$head(includeCSS("styles.css"), includeScript("gomap.js")),
-                                                
-                                                # get the map
-                                                htmlOutput('map_eff'),
-                                                
-                                                # options panel
-                                                absolutePanel(id = "controls", class = "panel panel-default",
-                                                              fixed = TRUE, draggable = TRUE,
-                                                              top = 60, left = "auto", right = 20, bottom = "auto",
-                                                              width = 330, height = "auto",
-                                                              h2("Accessibility Explorer"),
-                                                              selectInput(inputId = "type_eff", label = "Amenity Type", choices = amenity_factor)),
-                                                
-                                                # citations
-                                                # tags$div(id="cite", 'Data compiled for ', tags$em('Citation Here'), ' by Author (Publisher, Year).')
-                                            )
-                                   ),
-                          ),
                           tabPanel("Urban Equity"),
                           "----",
                           "Learn More",
@@ -116,8 +138,8 @@ server <- function(input, output){
     })
     
     getPage_kep <- reactive({ 
-        amn_name <- input$type_iso
-        html_file <-  glue('all_type_Kepler')
+        amn_name <- input$type_kep
+        html_file <-  glue('{amn_name} Score Kepler')
         return(glue('/{html_file}.html'))
     })
     
