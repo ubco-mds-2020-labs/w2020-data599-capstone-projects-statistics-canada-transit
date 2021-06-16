@@ -166,6 +166,13 @@ eff_frame_percentiles$efficiency <- normalize_vec(
 efficiency_frame <- eff_frame_percentiles
 efficiency_frame
 
+
+# check the distributions
+
+plot(density(normalize_vec(efficiency_frame$mean_score)), main = 'Accessibility Scores')
+plot(density(efficiency_frame$need), main = 'Accessibility Needs Scores')
+plot(density(efficiency_frame$efficiency), main = 'Efficiency Scores')
+
 ```
 
 
@@ -174,98 +181,6 @@ efficiency_frame
 
 ## Export checkpoint
 write.csv(efficiency_frame, '../../../data/3_computed/transit_efficiency/efficiency_frame.csv', row.names = FALSE)
-
-```
-
-## 3) SECTION NO LONGER NEEDED: Dataset Wrangling Part II (NA Insertion)
-
-Each origin(fromId) should have x different scores where x is defined by:
-
-x = 4 amenity options = 4
-
-In addition to filling the empty NA rows for included IDs, there are also IDs
-that need to be re-added as not a single time was computed for these IDs.
-
-
-```{r}
-paste0('EFFICIENCY FRAME')
-
-# HOW MANY ROWS TO ADD IN EFFICIENCY FRAME?
-# existing IDs that weren't included in ttm
-missing_blocks <- array(setdiff(origins$id, efficiency_frame$fromId))
-total_expected <- nrow(efficiency_frame) + length(missing_blocks) # only 4 values per origin
-
-paste(glue('{nrow(efficiency_frame)} of {total_expected} rows filled ({round((nrow(efficiency_frame) / total_expected)*100, 2)}%)'))
-paste(length(missing_blocks), 'to add')
-```
-
-```{r}
-
-# add missing NAs to efficiency frame
-all_efficiency_frame <- NA_table_filler_eff(efficiency_frame, custom_idx = missing_blocks)
-
-# check efficiency: there should be 1 count per fromId
-eff_id_counts <- all_efficiency_frame %>% group_by(fromId) %>% summarise(n = n())
-unique(eff_id_counts$n)
-
-```
-
-
-
-
-### Import the dissemination block shape file
-```{r}
-canada_shape <- st_read("../../data/census2016_DBS_shp/DB_Van_CMA/DB_Van_CMA.shp", stringsAsFactors = FALSE)
-
-# select a greater metropolitan area
-metropolitan_area <- "Vancouver"
-
-# filter columns and rows
-vancouver_shape <- data.frame(canada_shape[which(canada_shape$CMANAME == metropolitan_area), c(1, 28)])
-
-# id to factor
-vancouver_shape$DBUID <- as.factor(vancouver_shape$DBUID)
-
-paste('Rows = ', nrow(vancouver_shape))
-head(vancouver_shape)
-```
-
-
-## 4) Interactive Visualization
-```{r}
-# join factor and geometry data 
-eff_viz_frame <- left_join(vancouver_shape, all_efficiency_frame, by = c('DBUID' = 'fromId'))
-
-# convert back to sf object
-eff_viz_frame_sf <- st_as_sf(eff_viz_frame)
-
-# convert to st object
-eff_viz_frame_st <- st_transform(eff_viz_frame_sf, crs = 4326)
-
-```
-
-
-
-## 5) Map HTML Exports
-
-```{r}
-source('functions_eff.R')
-
-map_maker_efficiency_num(data = eff_viz_frame_st,
-                      output_dir = '../../data/html_maps/efficiency_maps')
-
-map_maker_efficiency_quant(data = eff_viz_frame_st,
-                      output_dir = '../../data/html_maps/efficiency_maps')
-```
-
-
-```{r}
-plot(density(normalize_vec(efficiency_frame$mean_score)))
-
-plot(density(efficiency_frame$need))
-
-plot(density(efficiency_frame$eff))
-
 
 ```
 

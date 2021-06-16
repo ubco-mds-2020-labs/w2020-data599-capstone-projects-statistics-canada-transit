@@ -85,7 +85,7 @@ head(vancouver_shape)
 ### Import bus stop network data
 ```{R}
 # Read Vancouver Station txt file
-rawlocs <- read.csv("../../data/1_raw/transit_network_data/stops.txt",
+rawlocs <- read.csv("../../data/1_raw/transit_and_osm_data/stops.txt",
                     head = TRUE, sep=",")
 
 station_locs <- rawlocs[c("stop_id","stop_name","stop_lat","stop_lon")]
@@ -133,6 +133,10 @@ scores_viz_frame <- mapping_data_prepper(vancouver_shape, scores_frame,
 isochr_viz_frame <- mapping_data_prepper(vancouver_shape, isochr_frame,
                                          by = c('DBUID' = 'fromId'))
 
+efficiency_frame <- read.csv('../../data/3_computed/transit_efficiency/efficiency_frame.csv')
+efficiency_frame$fromId <- as.factor(efficiency_frame$fromId)
+efficiency_frame_viz <- mapping_data_prepper(vancouver_shape, efficiency_frame,
+                                             by = c('DBUID' = 'fromId'))
 
 ```
 
@@ -146,6 +150,8 @@ isochr_viz_frame <- mapping_data_prepper(vancouver_shape, isochr_frame,
 
 
 ```
+
+
 ## 3) Map HTML Exports
 
 **Maps to export:**
@@ -191,9 +197,10 @@ for (amenity in amenities) {
 }
 
 # NEED EFFICIENCY DATA
+
 # 2 efficiency maps
-#map_maker_efficiency_cont()
-#map_maker_efficiency_quant()
+map_maker_efficiency_cont(efficiency_frame_viz, output_dir = paste0(mappath, '/efficiency_maps'))
+map_maker_efficiency_quant(efficiency_frame_viz, output_dir = paste0(mappath, '/efficiency_maps'))
 
 
 ```
