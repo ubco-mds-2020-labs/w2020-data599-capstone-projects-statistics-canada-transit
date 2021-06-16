@@ -19,8 +19,9 @@ sections:
 ## 0) Useful Libraries
 
 ```{r message=FALSE, warning=FALSE, include=TRUE}
-# import custom scoring, cleaning, and visualization functions
-source('functions_eff.R')
+
+# import custom  functions
+source('../../0 - custom_functions/functions.R')
 
 # wrangling/convenience
 library(tidyverse)
@@ -39,57 +40,70 @@ library(lemon)
 knit_print.data.frame <- lemon_print
 knit_print.tbl <- lemon_print
 knit_print.summary <- lemon_print
+
+datapath <- "../../../data/"
+
 ```
 
 
 
 
-## 1) Initial data wrangling
+## 1) Initial data import
 ```{r}
 
-# Function to calculate efficiency withing 'X' degrees of each block
 
-#import scores
-scores_long <- read.csv('../../data/efficiency/initial_scores.csv', stringsAsFactors = FALSE)
-origins <- fread(file.path("../../data/clean", "vancouver_db.csv"), stringsAsFactors = FALSE)[, .(id, pop, lat, lon)]
-traffic_data <- read.csv('../../data/raw/BC_trafic_data_2015_summary.csv', stringsAsFactors = FALSE)[c(9,10,16:37)]
-db_fac_dense <- read.csv('../../data/efficiency/ttm_eff.csv', stringsAsFactors = FALSE)
+scores <- read.csv(paste0(datapath, '3_computed/accessibility_measures/scores_frame.csv'), stringsAsFactors = FALSE)
 
-origins$pop <- str_replace_all(origins$pop, ',', '')
+origins <-  fread(file.path("../../../data/2_clean/vancouver_db.csv"))
+
+
+traffic_data <- read.csv(paste0(datapath, '1_raw/traffic_data/BC_traffic_data_2015_summary.csv'), stringsAsFactors = FALSE)[c(9,10,16:37)]
+
+amenity_density <- read.csv('../../../data/3_computed/amenity_density.csv', stringsAsFactors = FALSE)
+
 
 # change col types
+scores[c(1,2,4,5)] <- lapply(scores[c(1,2,4,5)], as.factor)
+amenity_density$fromId <- as.factor(amenity_density$fromId)
+origins$id <- as.factor(origins$id)
 
-db_fac_dense$fromId <- as.factor(db_fac_dense$fromId)
-scores_long$fromId <- as.factor(scores_long$fromId)
-origins$pop <- as.numeric(origins$pop)  
-origins$id <- as.factor(origins$id)  
-n_origins <- nrow(origins)
-paste('Origin Rows: ', n_origins)
 ```
 
-## 2) Calculation of the running efficiency score
-## Calculate using existing proximity scores and traffic vehicle count
-```{r}
+## Combing efficiency factors (population, amenity density, and traffic data)
+
+```{r message=FALSE, warning=FALSE}
+
 # Get mean accessibility score for each block
-scores_long_pos <- filter(scores_long,stringr::str_detect(nearest_n, '1') & stringr::str_detect(weight, 'no'))[,c(1,3)] %>% group_by(fromId) %>% summarise(mean_score = mean(score))
+eff_frame <- filter(scores, weight=='no' & nearest_n ==1,)[c(1,3)] %>%
+                          #str_detect(nearest_n, '1') & str_detect(weight, 'no'))[,c(1,3)] %>%
+                   group_by(fromId) %>%
+                   summarise(mean_score = mean(score, na.rm = TRUE))
 
+# add coordinates
+eff_frame <- left_join(eff_frame, origins[, c('id', 'lat', 'lon')], by=c("fromId" = "id"), keep = FALSE)
 
-# population
-scores <- left_join(scores_long_pos, origins[, c('id', 'pop')], by=c("fromId" = "id"), keep = FALSE)
+# add population
+pops <- scores %>% group_by(fromId, pop) %>% summarize()
+eff_frame <- left_join(eff_frame, pops, by=c("fromId" = "fromId"), keep = FALSE)
 
-# amenity density
-db_fac_dense2 <- db_fac_dense %>% group_by(fromId) %>% summarize(amn_dens = as.double(n()))
+# add amenity density (frequency in this case)
+eff_frame <- left_join(eff_frame, amenity_density, by=c('fromId' = "fromId"), keep = FALSE)
+eff_frame <- eff_frame %>% rename(amn_density = n_amenities)
 
-scores <- left_join(scores, db_fac_dense2, by=c('fromId' = "fromId"), keep = FALSE)
+# assign NAs zero value
+eff_frame[is.na(eff_frame$amn_density), c("amn_density")] <- 0
 
 # Normalize the population of each block
-scores[is.na(scores$amn_dens), c("amn_dens")] <- 0
-scores <- normalize_df(scores)
+eff_frame$pop <- normalize_vec(eff_frame$pop)
+eff_frame$amn_density <- normalize_vec(eff_frame$amn_density)
 
-scores
+eff_frame
 ```
 
 
+*Here we combine the traffic data*
+
+The 0.065 degrees needs to be checked for its actual distance
 
 ```{r}
 
@@ -97,66 +111,73 @@ scores
 traffic_data$TrafficCount <- apply(traffic_data, 1, getAll_Data)
 traffic_data_clean <- traffic_data[, c(1,2,25)]
 
-scores_pos <- left_join(scores, origins[, c('id', 'lat', 'lon')], by=c("fromId" = "id"), keep = FALSE)
-
 
 db_trafic <- function(row){
   mean(filter(traffic_data_clean, 
-              traffic_data_clean$LATITUDE <= (as.numeric(row["lat"])+0.0675) & 
-              traffic_data_clean$LATITUDE >= (as.numeric(row["lat"])-0.0675) & 
-              traffic_data_clean$LONGITUDE <= (as.numeric(row["lon"])+0.0675) & 
-              traffic_data_clean$LONGITUDE >= (as.numeric(row["lon"])-0.0675))$TrafficCount, na.rm = TRUE) 
+              traffic_data_clean$LATITUDE <= (as.numeric(row["lat"])+0.065) & 
+              traffic_data_clean$LATITUDE >= (as.numeric(row["lat"])-0.065) & 
+              traffic_data_clean$LONGITUDE <= (as.numeric(row["lon"])+0.065) & 
+              traffic_data_clean$LONGITUDE >= (as.numeric(row["lon"])-0.065))$TrafficCount, na.rm = TRUE) 
 }
 
-scores_pos$trafficScore <- apply(scores_pos,1,db_trafic)
+eff_frame$trafficScore <- apply(eff_frame, 1, db_trafic)
 
-scores_pos$trafficScore[is.na(scores_pos$trafficScore)] <- mean(scores_pos$trafficScore, na.rm = TRUE)
-scores_pos$trafficScore <- normalize_vec(scores_pos$trafficScore)
+# replace NA values with 20th percentile traffic 
+eff_frame$trafficScore[is.na(eff_frame$trafficScore)] <- quantile(ecdf(eff_frame$trafficScore), 0.2)
+eff_frame$trafficScore <- normalize_vec(eff_frame$trafficScore)
+```
+
+```{r}
+
+# copy score frame to work with percentiles instead of raw scores
+eff_frame_percentiles <- eff_frame
+library(fmsb)
+
+# convert the "needs" factors to percentile to make them comparable
+eff_frame_percentiles$trafficScore <- percentile(eff_frame$trafficScore)/100
+eff_frame_percentiles$pop <- percentile(eff_frame$pop)/100
+eff_frame_percentiles$amn_density <- percentile(eff_frame$amn_density)/100
+
+# compute needs factor
+eff_frame_percentiles$need <- (eff_frame_percentiles$trafficScore + 
+                               eff_frame_percentiles$pop + 
+                               eff_frame_percentiles$amn_density)/3
 
 
-# copy score frame but with percentiles instead of raw scores
-scores_pos_percentiles <- scores_pos
+# convert accessibility scores and needs score to percentile to make them comparable as well
+# first we need to assign rows with NA as 0 since they have no access
+# or we can remove them entirely
+eff_frame_percentiles$mean_score[is.na(eff_frame_percentiles$mean_score)] <- 0.01
 
-# convert need factors to percentile to make them comparable
-perc_traffic <- ecdf(scores_pos$trafficScore)
-perc_pop <- ecdf(scores_pos$pop) 
-perc_amn <- ecdf(scores_pos$amn_dens)
-
-scores_pos_percentiles$trafficScore <- perc_traffic(scores_pos_percentiles$trafficScore)
-scores_pos_percentiles$pop <- perc_pop(scores_pos_percentiles$pop)
-scores_pos_percentiles$amn_dens <- perc_amn(scores_pos_percentiles$amn_dens)
-
-# compute need
-scores_pos_percentiles$need <- (scores_pos_percentiles$trafficScore + scores_pos_percentiles$pop + scores_pos_percentiles$amn_dens)/3
-
-
-# optionally convert accs and need score to percentile
-perc_accs <- ecdf(scores_pos$mean_score) 
-perc_need <- ecdf(scores_pos_percentiles$need)
-
-scores_pos_percentiles$mean_score <- perc_accs(scores_pos_percentiles$mean_score)
-scores_pos_percentiles$need <- perc_need(scores_pos_percentiles$need)
+eff_frame_percentiles$mean_score <- percentile(eff_frame_percentiles$mean_score)/100
+eff_frame_percentiles$need <- percentile(eff_frame_percentiles$need)/100
 
 
 ## Calculate efficiency score
 
-# log distribution adjustment
+# log distribution adjustment - dont use this
 #scores_pos_percentiles$eff <- normalize_vec(log(scores_pos_percentiles$mean_score)) - scores_pos_percentiles$need
 
 # percentile distribution adjustment
-scores_pos_percentiles$eff <- normalize_vec(scores_pos_percentiles$mean_score - scores_pos_percentiles$need, x = -1, y = 1)
+eff_frame_percentiles$efficiency <- normalize_vec(
+  eff_frame_percentiles$mean_score - eff_frame_percentiles$need,
+  x = -1, y = 1)
 
-
-efficiency_frame <- scores_pos_percentiles[, -c(5,6)]
+efficiency_frame <- eff_frame_percentiles
 efficiency_frame
+
 ```
 
 
 
+```{r}
 
+## Export checkpoint
+write.csv(efficiency_frame, '../../../data/3_computed/transit_efficiency/efficiency_frame.csv', row.names = FALSE)
 
+```
 
-## 3) Dataset Wrangling Part II (NA Insertion)
+## 3) SECTION NO LONGER NEEDED: Dataset Wrangling Part II (NA Insertion)
 
 Each origin(fromId) should have x different scores where x is defined by:
 
@@ -173,6 +194,7 @@ paste0('EFFICIENCY FRAME')
 # existing IDs that weren't included in ttm
 missing_blocks <- array(setdiff(origins$id, efficiency_frame$fromId))
 total_expected <- nrow(efficiency_frame) + length(missing_blocks) # only 4 values per origin
+
 paste(glue('{nrow(efficiency_frame)} of {total_expected} rows filled ({round((nrow(efficiency_frame) / total_expected)*100, 2)}%)'))
 paste(length(missing_blocks), 'to add')
 ```
@@ -182,20 +204,13 @@ paste(length(missing_blocks), 'to add')
 # add missing NAs to efficiency frame
 all_efficiency_frame <- NA_table_filler_eff(efficiency_frame, custom_idx = missing_blocks)
 
-# check efficiency
-# there should be 1 count per fromId
+# check efficiency: there should be 1 count per fromId
 eff_id_counts <- all_efficiency_frame %>% group_by(fromId) %>% summarise(n = n())
 unique(eff_id_counts$n)
 
 ```
 
 
-```{r}
-
-## Export checkpoint
-write.csv(all_efficiency_frame, '../../data/efficiency/efficiency_frame.csv', row.names = FALSE)
-
-```
 
 
 ### Import the dissemination block shape file

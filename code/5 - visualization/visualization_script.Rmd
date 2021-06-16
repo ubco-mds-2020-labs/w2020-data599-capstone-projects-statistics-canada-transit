@@ -193,6 +193,8 @@ for (amenity in amenities) {
 # NEED EFFICIENCY DATA
 # 2 efficiency maps
 #map_maker_efficiency_cont()
+#map_maker_efficiency_quant()
+
 
 ```
 
