@@ -1,9 +1,8 @@
-.pbf
-.osm
-.mapdb
-.p
-.dat
-.RData
-.Rhistory
-.zip
-.gml
+*.dat
+*.RData
+*.Rhistory
+*.p
+*.pbf
+*.osm
+*.mapdb
+*.gml

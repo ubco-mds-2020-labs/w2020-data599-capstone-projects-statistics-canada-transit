@@ -1,0 +1,148 @@
+---
+title: "Travel Time Matrix to Maps"
+output: html_notebook
+---
+
+## Notebook Purpose
+
+This notebook serves to summarize the entire visualization process going from 
+the travel time matrix to the visualizations. That involves the following 
+sections:
+
+1) Travel Time Matrix Wrangling
+2) Score Computation
+3) Isochrone Computation
+4) Dataset Wrangling Part II (NA Insertion)
+5) Interactive Visualization
+6) Map HTML Exports
+
+## 0) Useful Libraries
+
+```{r message=FALSE, warning=FALSE, include=TRUE}
+# wrangling/convenience
+library(tidyverse)
+library(glue)
+library(stringr)
+library(sf)
+library(data.table)
+
+# visualization
+# library(leaflet)
+# library(mapview); mapviewOptions(platform = 'leafgl')
+#library(ggplot2)
+#library(RColorBrewer)
+#library(scales)
+#library(lattice)
+
+# For pretty knitting
+# library(lemon)
+# knit_print.data.frame <- lemon_print
+# knit_print.tbl <- lemon_print
+# knit_print.summary <- lemon_print
+```
+
+
+## 1) Data Wrangling
+
+### Import all dissemination block data
+```{r}
+# import dissemination blocks and keep id and pop columns
+# origins <- fread(file.path("../data/clean", "vancouver_db.csv"))[, .(id, pop)]
+origins <- read.csv("vancouver_db.csv")
+# origins$pop <- str_replace_all(origins$pop, ',', '')
+
+# change col types
+origins$pop <- NULL  
+origins$id <- as.factor(origins$id)  
+
+n_origins <- nrow(origins)
+paste('Origin Rows: ', n_origins)
+
+# Peek
+head(origins)
+```
+
+
+### Import all amenity data
+```{r}
+# import amenities (Cultural/Art facilities)
+# destinations <- fread(file.path("../data/clean", "vancouver_facilities_2.csv"))
+destinations <- read.csv('vancouver_facilities_2.csv')
+
+# see summary counts of each amenity
+# destinations %>% group_by(type) %>% summarise(count = n()) %>% arrange(desc(count))
+
+# clean amenities / filter types to keep 4 most frequent amenities
+target_amenities <- c('gallery', 'museum', 'library or archives', 'theatre/performance and concert hall')
+destinations <- destinations %>% filter(type %in% target_amenities)
+
+# keep only id and type columns
+# destinations <- destinations[ , c(1,4)]
+
+# change col types
+destinations$type <- as.factor(destinations$type)
+destinations$id <- as.factor(destinations$id)  
+
+n_amenities <- nrow(destinations)
+paste('Destinations: ', n_amenities)
+head(destinations)
+```
+
+
+### Import the travel time matrix
+```{r kable.opts=list(caption='Summary Table')}
+# import travel time matrix
+# ttm <- fread(file.path('../data/clean', 'ttm.csv'))
+# ttm <- read.csv('ttm5_719.csv')
+
+ttm <- readRDS("TTM6.rds")
+
+# convert Ids to  factor
+ttm$fromId <- as.factor(ttm$fromId)
+ttm$toId <- as.factor(ttm$toId)
+
+## Replace travel times less than 1 minute to 1 minute
+# This is done to prevent infinity values in the scoring since
+# 1 minute is still a reasonable time for trips in the 0 - 1 min range.
+# ttm$avg_time <- pmax(ttm$avg_time, 1)
+
+# add amenity types
+# use left join since we only care to keep existing amenities in the ttm
+ttm <-  left_join(ttm, destinations, by = c('toId' = 'id'))
+
+# how many origins actually have transit accessibility
+# paste('Origins considered:', round((length(unique(ttm$fromId))/n_origins)*100, 2), '%')
+# paste('Destinations considered:', round(length(unique(ttm$toId))/n_amenities*100, 2), '%')
+# paste('Rows = ', nrow(ttm))
+
+# peek
+head(ttm)
+ttm$name <- NULL
+ttm$city <- NULL
+ttm$city_id <- NULL
+
+# If we don't want the location of amenities
+ttm$lat <- NULL
+ttm$lon <- NULL
+```
+
+#### Isochrones map
+
+```{r}
+
+# only consider the nearest amenity
+near1 <- ttm %>%
+  group_by(fromId, type, t1) %>%
+  summarise(avg_time = min(travel_time),
+            Dest = toId[which.min(travel_time)])
+            # Latitude = lat[which.min(travel_time)],
+            # Longitude = lon[which.min(travel_time)])
+
+
+# Remove null values
+na.omit(near1)->near1
+# near1 <- near1[ , c(4,2,3)]
+
+## Export
+write.csv(near1, 'ttm6_719.csv', row.names = FALSE)
+```
