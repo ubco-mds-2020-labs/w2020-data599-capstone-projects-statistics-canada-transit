@@ -1,0 +1,8 @@
+$$Eff = Amenity Access via Transit - Transit Network Needs$$
+$$Eff = Abs(Amenity Access via Transit - Transit Network Needs)$$
+
+$$Eff = (Amenity Access via Transit - Transit Network Needs)^2$$
+
+
+
+$$Eff = norm[-1, 1] (Percentile(Access Score) - Percentile(Network Needs))$$
