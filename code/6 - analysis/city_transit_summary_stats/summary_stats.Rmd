@@ -49,19 +49,22 @@ city_frequency <- all_data %>%
                     summarize(freq = n()) %>%
                     arrange(desc(freq))
 
+#  title = 'Total Dissemination Blocks by City Subdivision'
 city_frequency %>%
   ggplot(aes(x = freq, y = reorder(subdiv, +freq))) +
   geom_bar(stat='identity') +
   theme_classic() +
-  labs(x = 'Count',
-       y = '', title = 'Total Dissemination Blocks by City Subdivision')
+  labs(x = 'Count', y = '') +
+  geom_text(aes(label=freq), size = 2,  vjust = 0.1, hjust=-0.25)
+
+ggsave('All City DB Count.png', width = 8, height = 8)
 
 # based on the bar graph we can remove cities below Port Coquitlam
 cities_to_keep <- city_frequency$subdiv[city_frequency$freq >= city_frequency$freq[city_frequency$subdiv == 'Port Coquitlam']]
 
 all_data_small <- all_data %>% filter(subdiv %in% cities_to_keep)
 
-# check
+# title = 'Total Dissemination Blocks in Largest City Subdivisions'
 all_data_small %>%
   group_by(subdiv) %>%
   summarize(freq = n()) %>%
@@ -69,8 +72,12 @@ all_data_small %>%
   ggplot(aes(x = freq, y = reorder(subdiv, +freq))) +
   geom_bar(stat='identity') +
   theme_classic() +
-  labs(x = 'Count',
-       y = '', title = 'Total Dissemination Blocks in Largest City Subdivisions')
+  labs(x = 'Count', y = '') +
+  geom_text(aes(label=freq), size = 2,  vjust = 0.1, hjust=-0.25)
+
+
+ggsave('Largest City DB Count.png', width = 8, height = 8)
+
 
 ```
 
@@ -80,14 +87,18 @@ all_data_small %>%
 ### Score Distribution
 ```{r}
 
+### DONT USE THIS CELL
+
+#   labs(title = 'Transit Accessibility Score Distributions',
+#       subtitle = 'To reach the nearest cultural amenities across Vancouver Subdivisions') 
+
 all_data_small %>%
   ggplot(aes(x = avg_score_to_nearest_amenity)) +
   geom_density(aes(fill = subdiv), alpha = 0.4) +
   guides(fill=guide_legend(title= 'Subdivision')) +
   scale_x_continuous('Accessibility Score', breaks = c(0, 0.1, 0.2, 0.3), limits = c(0, 0.3)) +
   scale_y_continuous(breaks = c(0, 12, 24)) +
-  labs(title = 'Transit Accessibility Score Distributions',
-       subtitle = 'To reach the nearest cultural amenities across Vancouver Subdivisions') +
+
   theme_minimal() +
   theme(aspect.ratio = 0.6,
         panel.grid.major.x = element_line(colour="lightgray", size=0.05),
@@ -98,7 +109,10 @@ all_data_small %>%
         axis.ticks.y = element_blank()) +
   facet_wrap(vars(subdiv), nrow = 3)
 
+ggsave('Score Distributions.png', width = 8, height = 8)
 
+# labs(title = 'Transit Accessibility Score Distributions',
+#       subtitle = 'To reach the nearest cultural amenities across Vancouver Subdivisions') +
 
 all_data_small %>%
   ggplot(aes(x = avg_score_to_nearest_amenity)) +
@@ -106,8 +120,7 @@ all_data_small %>%
   guides(fill=guide_legend(title= 'Subdivision')) +
   scale_x_continuous('Accessibility Score', breaks = c(0, 0.1, 0.2, 0.3), limits = c(0, 0.3)) +
   scale_y_continuous(breaks = c(0, 12, 24)) +
-  labs(title = 'Transit Accessibility Score Distributions',
-       subtitle = 'To reach the nearest cultural amenities across Vancouver Subdivisions') +
+  
   theme_minimal() +
   theme(aspect.ratio = 0.6,
         panel.grid.major.x = element_line(colour="lightgray", size=0.05),
@@ -116,52 +129,105 @@ all_data_small %>%
         axis.text.y = element_blank(),
         axis.ticks.y = element_blank()) 
 
+ggsave('Overlaid Score Distributions.png', width = 8, height = 8)
+
 ```
+
+```{r}
+#   labs(title = 'Transit Accessibility Score Distributions',
+#       subtitle = 'To reach the nearest cultural amenities across Vancouver Subdivisions') 
+
+
+legend_ord <- levels(with(all_data_small, reorder(factor(subdiv), -avg_score_to_nearest_amenity, na.rm = TRUE)))
+
+all_data_small %>%
+  ggplot(aes(y =reorder(factor(subdiv), avg_score_to_nearest_amenity, na.rm = TRUE),
+             x = log(avg_score_to_nearest_amenity))) +
+  geom_violin(aes(fill = subdiv), scale = 'width', alpha = 0.4, draw_quantiles = c(0.5), size = 0.5) + 
+  scale_fill_discrete(breaks=legend_ord) +
+  scale_x_continuous("log(Average Accessibility Score)",
+                     limits = c(-6, 0), breaks=c(0,-2,-4,-6)) +
+
+  guides(fill=guide_legend(title= 'Subdivision')) +
+
+  theme_minimal() +
+  theme(aspect.ratio = 1,
+        panel.grid.major.x = element_line(colour="lightgray", size=0.05),
+        panel.grid.major.y = element_line(colour="lightgray", size=0.05),
+        panel.grid.minor.y = element_blank(),
+        axis.title.y = element_blank(),
+        axis.text.y = element_blank(),
+        axis.ticks.y = element_blank()) 
+
+ggsave('Violin log(Score) Distributions.png', width = 8, height = 8)
+
+
+
+all_data_small %>%
+  ggplot(aes(y =reorder(factor(subdiv), avg_score_to_nearest_amenity, na.rm = TRUE),
+             x = (avg_score_to_nearest_amenity))) +
+  geom_violin(aes(fill = subdiv), scale = 'width', alpha = 0.4, draw_quantiles = c(0.5), size = 0.5) + 
+  scale_fill_discrete(breaks=legend_ord) +
+  scale_x_continuous("Average Accessibility Score",
+                     limits = c(0, 0.3), breaks=c(0,0.1,0.2,0.3)) +
+
+  guides(fill=guide_legend(title= 'Subdivision')) +
+
+  theme_minimal() +
+  theme(aspect.ratio = 1,
+        panel.grid.major.x = element_line(colour="lightgray", size=0.05),
+        panel.grid.major.y = element_line(colour="lightgray", size=0.05),
+        panel.grid.minor.y = element_blank(),
+        axis.title.y = element_blank(),
+        axis.text.y = element_blank(),
+        axis.ticks.y = element_blank())
+  
+ggsave('Violin Score Distributions.png', width = 8, height = 8)
+
+
+
+```
+
 
 ### Time Distribution
 ```{r}
 
-all_data_small %>%
-  ggplot(aes(x = time_to_nearest_amenity, fill = subdiv)) +
-  geom_density(alpha = 0.4) +
-  scale_x_continuous('Time (min)') +
-  scale_y_continuous(breaks = c(0, 0.03, 0.06)) +
-  labs(title = 'Transit Accessibility Time Distributions',
-       subtitle = 'To reach the nearest cultural amenities across Vancouver Subdivisions') +
-  theme_minimal() +
-  #egg::theme_article() + 
-  theme(aspect.ratio = 0.6,
-        panel.grid.major.x = element_line(colour="lightgray", size=0.05),
-        axis.title.y = element_blank(),
-        axis.text.y = element_blank(),
-        axis.ticks.y = element_blank()) +
-  facet_wrap(vars(subdiv), nrow = 3)
+legend_ord <- levels(with(all_data_small, reorder(factor(subdiv), time_to_nearest_amenity, na.rm = TRUE)))
+
 
 all_data_small %>%
-  ggplot(aes(x = time_to_nearest_amenity, fill = subdiv)) +
-  geom_density(alpha = 0.4) +
-  scale_x_continuous('Time (min)') +
-  scale_y_continuous(breaks = c(0, 0.03, 0.06)) +
-  labs(title = 'Transit Accessibility Time Distributions',
-       subtitle = 'To reach the nearest cultural amenities across Vancouver Subdivisions') +
+  ggplot(aes(y =reorder(factor(subdiv), -time_to_nearest_amenity, na.rm = TRUE),
+             x = (time_to_nearest_amenity))) +
+  geom_violin(aes(fill = subdiv), scale = 'width', alpha = 0.4, draw_quantiles = c(0.5), size = 0.5) + 
+  scale_fill_discrete(breaks=legend_ord) +
+  scale_x_continuous("Average Time in Minutes") +
+                     #limits = c(0, 0.3), breaks=c(0,0.1,0.2,0.3)) +
+
+  guides(fill=guide_legend(title= 'Subdivision')) +
+
   theme_minimal() +
-  #egg::theme_article() + 
-  theme(aspect.ratio = 0.6,
+  theme(aspect.ratio = 1,
         panel.grid.major.x = element_line(colour="lightgray", size=0.05),
+        panel.grid.major.y = element_line(colour="lightgray", size=0.05),
+        panel.grid.minor.y = element_blank(),
         axis.title.y = element_blank(),
         axis.text.y = element_blank(),
-        axis.ticks.y = element_blank()) 
+        axis.ticks.y = element_blank())
+  
+ggsave('Violin Time Distributions.png', width = 8, height = 8)
+
+
 ```
 
 ```{r}
-
 all_data_small %>%
-  ggplot(aes(x = avg_time_to_any_amenity, fill = subdiv)) +
-  geom_density(alpha = 0.4) +
-  scale_x_continuous('Accessibility Measure') +
-  scale_y_continuous(breaks = c(0, 0.1)) +
-  labs(title = 'Transit Accessibility Time Distributions',
-       subtitle = 'To reach the any cultural amenity across Vancouver Subdivisions') +
+  ggplot(aes(x = time_to_nearest_amenity, fill = subdiv)) +
+  geom_density(aes(fill = subdiv), alpha = 0.4) +
+  guides(fill=guide_legend(title= 'Subdivision')) +
+  scale_x_continuous('Minutes') +
+  scale_y_continuous(breaks = c(0, 0.03, 0.06)) +
+#  labs(title = 'Transit Accessibility Time Distributions',
+#       subtitle = 'To reach the nearest cultural amenities across Vancouver Subdivisions') +
   theme_minimal() +
   #egg::theme_article() + 
   theme(aspect.ratio = 0.6,
@@ -171,13 +237,17 @@ all_data_small %>%
         axis.ticks.y = element_blank()) +
   facet_wrap(vars(subdiv), nrow = 3)
 
+ggsave('Time to nearest amenity distributions.png', width = 8, height = 8)
+
+
 all_data_small %>%
-  ggplot(aes(x = avg_time_to_any_amenity, fill = subdiv)) +
-  geom_density(alpha = 0.4) +
-  scale_x_continuous('Accessibility Measure') +
-  scale_y_continuous(breaks = c(0, 0.1)) +
-  labs(title = 'Transit Accessibility Time Distributions',
-       subtitle = 'To reach the any cultural amenity across Vancouver Subdivisions') +
+  ggplot(aes(x = time_to_nearest_amenity, fill = subdiv)) +
+  geom_density(aes(fill = subdiv), alpha = 0.4) +
+  guides(fill=guide_legend(title= 'Subdivision')) +
+  scale_x_continuous('Minutes') +
+  scale_y_continuous(breaks = c(0, 0.03, 0.06)) +
+#  labs(title = 'Transit Accessibility Time Distributions',
+#       subtitle = 'To reach the nearest cultural amenities across Vancouver Subdivisions') +
   theme_minimal() +
   #egg::theme_article() + 
   theme(aspect.ratio = 0.6,
@@ -186,8 +256,91 @@ all_data_small %>%
         axis.text.y = element_blank(),
         axis.ticks.y = element_blank())
 
+ggsave('Overlaid time to nearest amenity distributions.png', width = 8, height = 8)
+
 ```
 
+```{r}
+legend_ord <- levels(with(all_data_small, reorder(factor(subdiv), avg_time_to_any_amenity, na.rm = TRUE)))
+
+all_data_small %>%
+  ggplot(aes(y =reorder(factor(subdiv), -avg_time_to_any_amenity, na.rm = TRUE),
+             x = (avg_time_to_any_amenity))) +
+  geom_violin(aes(fill = subdiv), scale = 'width', alpha = 0.4, draw_quantiles = c(0.5), size = 0.5) + 
+  scale_fill_discrete(breaks=legend_ord) +
+  scale_x_continuous("Average Time in Minutes") +
+                     #limits = c(0, 0.3), breaks=c(0,0.1,0.2,0.3)) +
+
+  guides(fill=guide_legend(title= 'Subdivision')) +
+
+  theme_minimal() +
+  theme(aspect.ratio = 1,
+        panel.grid.major.x = element_line(colour="lightgray", size=0.05),
+        panel.grid.major.y = element_line(colour="lightgray", size=0.05),
+        panel.grid.minor.y = element_blank(),
+        axis.title.y = element_blank(),
+        axis.text.y = element_blank(),
+        axis.ticks.y = element_blank())
+  
+ggsave('Violin Time Distribution to All Amenities.png', width = 8, height = 8)
+
+```
+
+```{r}
+all_data_small %>%
+  ggplot(aes(x = avg_time_to_any_amenity, fill = subdiv)) +
+  geom_density(aes(fill = subdiv), alpha = 0.4) +
+  guides(fill=guide_legend(title= 'Subdivision')) +
+  scale_x_continuous('Minutes') +
+  scale_y_continuous(breaks = c(0, 0.1)) +
+#  labs(title = 'Transit Accessibility Time Distributions',
+#       subtitle = 'To reach the any cultural amenity across Vancouver Subdivisions') +
+  theme_minimal() +
+  #egg::theme_article() + 
+  theme(aspect.ratio = 0.6,
+        panel.grid.major.x = element_line(colour="lightgray", size=0.05),
+        axis.title.y = element_blank(),
+        axis.text.y = element_blank(),
+        axis.ticks.y = element_blank()) +
+  facet_wrap(vars(subdiv), nrow = 3)
+
+ggsave('Time to all amenity distributions.png', width = 8, height = 8)
+
+
+all_data_small %>%
+  ggplot(aes(x = avg_time_to_any_amenity, fill = subdiv)) +
+  geom_density(aes(fill = subdiv), alpha = 0.4) +
+  guides(fill=guide_legend(title= 'Subdivision')) +
+  scale_x_continuous('Minutes') +
+  scale_y_continuous(breaks = c(0, 0.1)) +
+#  labs(title = 'Transit Accessibility Time Distributions',
+#       subtitle = 'To reach the any cultural amenity across Vancouver Subdivisions') +
+  theme_minimal() +
+  #egg::theme_article() + 
+  theme(aspect.ratio = 0.6,
+        panel.grid.major.x = element_line(colour="lightgray", size=0.05),
+        axis.title.y = element_blank(),
+        axis.text.y = element_blank(),
+        axis.ticks.y = element_blank())
+
+ggsave('Overlaid time to all amenities distributions.png', width = 8, height = 8)
+
+```
+
+
+
+```{r}
+summary_stats <- all_data_small %>%
+  group_by(subdiv) %>%
+  summarize(mean_score_nearest_amenity = mean(avg_score_to_nearest_amenity, na.rm = T),
+            sd_score_nearest_amenity = sd(avg_score_to_nearest_amenity, na.rm = T),
+            mean_time_nearest_amenity = mean(time_to_nearest_amenity, na.rm = T),
+            sd_time_nearest_amenity = sd(time_to_nearest_amenity, na.rm = T),
+            mean_time_all_amenity = mean(avg_time_to_any_amenity, na.rm = T),
+            sd_time_all_amenity = sd(avg_time_to_any_amenity, na.rm = T))
+
+write.csv(summary_stats, '../../../data/3_computed/summary_statistics_by_city.csv')
+```
 
 
 ## Does weight have an impact?
