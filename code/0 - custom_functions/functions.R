@@ -249,12 +249,14 @@ map_maker_scores <- function(data, bus_data, amenity, weight, nearest_n, add_sto
   
   # popup # percentile(score_vec),
   percentile <- ecdf(score_vec)
-  p_popup <- paste0("Accessibility Percentile: <strong>", round(percentile(score_vec), 2)*100, '%',"</strong>", 
-                    "<br>Block Population: <strong>", polyg_subset$pop,"</strong>",
-                    "<br><br>Block ID: ", polyg_subset$DBUID,
+  p_popup <- paste0("<strong>Accessibility Percentile: ", round(percentile(score_vec), 2)*100, '%',"</strong>", 
+                    "<br><i> To cultural amenities.<i>",
+                    "<br><br>Block Population: <strong>", polyg_subset$pop,"</strong>",
+                    "<br>Block ID: ", polyg_subset$DBUID,
                     "<br>Raw Score: ", round(score_vec, 2))
-  stop_popup<-paste0("STOP ID: <strong>",bus_data$stop_id,"</strong>",
-                     "<br>STOP Name: <strong>",bus_data$stop_name)
+  
+  stop_popup<-paste0("<strong>", bus_data$stop_name, "</strong>",
+                     "<br>Stop: <strong>",bus_data$stop_id,"</strong>")
   
   map <- leaflet(data = polyg_subset) %>%
     addPolygons(
@@ -268,14 +270,13 @@ map_maker_scores <- function(data, bus_data, amenity, weight, nearest_n, add_sto
               pal=pal_fun,    # palette function
               values=~score_vec,  # value to be passed to palette function
               title = glue('{amn_name} Transit Access'))
-  if(add_stop==TRUE & view_map==FALSE){
-    map%>%addCircles(data=bus_data,~longitude, ~latitude, weight = 1, radius=5,
-                     color="#0073B2", stroke = TRUE, fillOpacity = 0.8,popup =stop_popup)->map
+
+  if (add_stop==TRUE) {
+    map %>% addCircles(data=bus_data,~longitude, ~latitude, weight = 1, radius=5,
+                       color="#0073B2", stroke = TRUE, fillOpacity = 0.8,popup =stop_popup) -> map
     
     file_name <- glue('{amn_name} - wt({weight}) - n({str_to_upper(nearest_n)})-bus')
     print(paste('Current Map:', file_name))
-    
-    mapshot(map, url = glue("{getwd()}/{output_dir}/{file_name}.html"))
   }
   
   if (view_map == TRUE) {
@@ -290,7 +291,7 @@ map_maker_scores <- function(data, bus_data, amenity, weight, nearest_n, add_sto
 
 # Mapping function for isochrone tables
 
-map_maker_isochrone <- function(data, bus_data, amenity, add_bus, output_dir, view_map = FALSE) {
+map_maker_isochrone <- function(data, bus_data, amenity, add_stop, output_dir, view_map = FALSE) {
   
   amn_name <- amenity %>%
     str_to_title() %>%
@@ -314,9 +315,10 @@ map_maker_isochrone <- function(data, bus_data, amenity, add_bus, output_dir, vi
   )
   
   p_popup <- paste0("Nearest: <strong>", amn_name,"</strong>", 
-                    "<br>Travel Time: <strong><", time_groups, " minutes</strong>")
-  stop_popup<-paste0("STOP ID: <strong>",bus_data$stop_id,"</strong>",
-                     "<br>STOP Name: <strong>",bus_data$stop_name)
+                    "<br>Transit Time is less than: <strong>", time_groups, " minutes</strong>")
+  
+  stop_popup<-paste0("<strong>", bus_data$stop_name, "</strong>",
+                     "<br>Stop: <strong>",bus_data$stop_id,"</strong>")
   
   map <- leaflet(data = polyg_subset) %>%
     addPolygons(
@@ -330,13 +332,14 @@ map_maker_isochrone <- function(data, bus_data, amenity, add_bus, output_dir, vi
               pal=pal_fun,    # palette function
               values=~time_groups,  # value to be passed to palette function
               title = glue('{amn_name} Transit Access'))
-  if(add_stop==TRUE & view_map==FALSE){
+
+  if(add_stop==TRUE){
     map%>%addCircles(data=bus_data,~longitude, ~latitude, weight = 1, radius=5,
-                     color="#0073B2", stroke = TRUE, fillOpacity = 0.8,popup =stop_popup)->map
+                     color="#0073B2", stroke = TRUE, fillOpacity = 0.8,popup =stop_popup) -> map
     file_name <- glue('{amn_name} Transit Isochrone with bus stops')
     print(paste('Current Map:', file_name))
-    mapshot(map, url = glue("{getwd()}/{output_dir}/{file_name}.html"))
   }
+
   if (view_map == TRUE) {
     return(map)
   } else {
@@ -349,7 +352,7 @@ map_maker_isochrone <- function(data, bus_data, amenity, add_bus, output_dir, vi
 
 # Efficiency maps
 
-map_maker_efficiency_cont <- function(data, mapTitle = "Continuous Efficiency", output_dir, view_map = FALSE) {
+map_maker_efficiency_cont <- function(data, bus_data, add_stop = TRUE, mapTitle = "Continuous Efficiency", output_dir, view_map = FALSE) {
     
   file_name <- glue('{mapTitle} Map')
   print(paste('Current Map:', file_name))
@@ -361,19 +364,23 @@ map_maker_efficiency_cont <- function(data, mapTitle = "Continuous Efficiency", 
   variable <- polyg_subset$eff
   
   # colour palette 
-  Bl2Rd <- c("#FA8072", "#F9A7B0", "#FFFFFF", "#FFFFFF", "#FFFFFF", "#FFFFFF", "#ADDFFF", "#1589FF")
+  Bl2Rd <- c("#FA8072", "#fcd7db", "#FFFFFF", "#FFFFFF", "#FFFFFF", "#ADDFFF", "#1589FF")
   pal_fun <- colorNumeric(palette = Bl2Rd, NULL, n = 9)
   
-  # popup # percentile(score_vec),
-  percentile <- ecdf(polyg_subset$mean_score)
-  p_popup <- paste0("Efficiency Score: ", round(variable, 2),
-                    "<br><br>Accessibility Score: <strong>", round(polyg_subset$mean_score, 2),"</strong>",
-                    "<br>Needs Score:  <strong>", round((1/3)*(polyg_subset$pop+ polyg_subset$trafficScore+ polyg_subset$amn_dens), 2),
-                    "<br><br>Population Score: <strong>",  round(polyg_subset$pop, 2),"</strong>",
-                    "<br>Traffic score: <strong>",  round(polyg_subset$trafficScore, 2),"</strong>",
-                    "<br>Facility density: <strong>",  round(polyg_subset$amn_dens, 2),"</strong>",
-                    "<br><br>Block ID: ", polyg_subset$DBUID)
-  
+   p_popup <- paste0("<h3>Efficiency Score: <strong>", round(variable, 2), "</strong></h3>",
+                    "<i> The closer to zero, the better.</i>", "<br><br>",
+                    "<strong>Accessibility Score: ", round(polyg_subset$mean_score, 2),"</strong>",
+                    "<br><strong>Needs Score:  ", round((1/3)*(polyg_subset$pop+ polyg_subset$trafficScore+ polyg_subset$amn_dens), 2), "</strong>",
+                    "<br><br>Population: ",  round(polyg_subset$pop, 2),
+                    "<br>Traffic: ",  round(polyg_subset$trafficScore, 2),
+                    "<br>Amenity density: ",  round(polyg_subset$amn_dens, 2),
+                    "<br>Block ID: ", polyg_subset$DBUID,
+                    "<br><br>Notes: <br>",
+                    "<i>Efficiency = Accessibility - Needs</i>", "<br>",
+                    "<i>Needs = mean(Population + Traffic + Amenity denisty)</i>")
+
+  stop_popup<-paste0("<strong>", bus_data$stop_name, "</strong>",
+                     "<br>Stop: <strong>",bus_data$stop_id,"</strong>")
   
   map <- leaflet(data = polyg_subset) %>%
     addPolygons(
@@ -388,6 +395,13 @@ map_maker_efficiency_cont <- function(data, mapTitle = "Continuous Efficiency", 
               values=~variable,  # value to be passed to palette function
               title = glue('{mapTitle} Map'))
   
+  if (add_stop==TRUE) {
+    map <- map %>% addCircles(data=bus_data, ~longitude, ~latitude, weight = 0.7, radius=8,
+                     color="#a7a7a7 ", stroke = TRUE, fillOpacity = 0.5,popup =stop_popup)
+    file_name <- glue('{mapTitle} Map with bus stops')
+    print(paste('Current Map:', file_name))
+  }
+
   if (view_map == TRUE) {
     return(map)
   } else {
@@ -396,7 +410,7 @@ map_maker_efficiency_cont <- function(data, mapTitle = "Continuous Efficiency", 
   
 }
 
-map_maker_efficiency_quant <- function(data, mapTitle = "Quantitative Efficiency", output_dir, view_map = FALSE) {
+map_maker_efficiency_quant <- function(data, bus_data, add_stop = TRUE, mapTitle = "Quantitative Efficiency", output_dir, view_map = FALSE) {
   
   file_name <- glue('{mapTitle} map')
   print(paste('Current Map:', file_name))
@@ -408,19 +422,25 @@ map_maker_efficiency_quant <- function(data, mapTitle = "Quantitative Efficiency
   variable <- polyg_subset$eff
   
   # colour palette 
-  Bl2Rd <- c("#FA8072", "#F9A7B0", "#FFFFFF", "#FFFFFF", "#FFFFFF", "#FFFFFF", "#ADDFFF", "#1589FF")
-  pal_fun <- colorQuantile(palette = Bl2Rd10, NULL, n = 10)
+  Bl2Rd <- c("#FA8072", "#fcd7db", "#FFFFFF", "#FFFFFF", "#FFFFFF", "#FFFFFF",  "#FFFFFF", "#FFFFFF", "#ADDFFF", "#1589FF")
+  pal_fun <- colorQuantile(palette = Bl2Rd, NULL, n = 10)
   
   # popup # percentile(score_vec),
   #percentile <- ecdf(polyg_subset$mean_score)
-  p_popup <- paste0("Efficiency Score: ", round(variable, 2),
-                    "<br><br>Accessibility Score: <strong>", round(polyg_subset$mean_score, 2),"</strong>",
-                    "<br>Needs Score:  <strong>", round((1/3)*(polyg_subset$pop+ polyg_subset$trafficScore+ polyg_subset$amn_dens), 2),
-                    "<br><br>Population Score: ",  round(polyg_subset$pop, 2),"",
-                    "<br>Traffic score: ",  round(polyg_subset$trafficScore, 2),"",
-                    "<br>Facility density: ",  round(polyg_subset$amn_dens, 2),"",
-                    "<br><br>Block ID: ", polyg_subset$DBUID)
-  
+  p_popup <- paste0("<h3>Efficiency Score: <strong>", round(variable, 2), "</strong></h3>",
+                    "<i> The closer to zero, the better.</i>", "<br><br>",
+                    "<strong>Accessibility Score: ", round(polyg_subset$mean_score, 2),"</strong>",
+                    "<br><strong>Needs Score:  ", round((1/3)*(polyg_subset$pop+ polyg_subset$trafficScore+ polyg_subset$amn_dens), 2), "</strong>",
+                    "<br><br>Population: ",  round(polyg_subset$pop, 2),
+                    "<br>Traffic: ",  round(polyg_subset$trafficScore, 2),
+                    "<br>Amenity density: ",  round(polyg_subset$amn_dens, 2),
+                    "<br>Block ID: ", polyg_subset$DBUID,
+                    "<br><br>Notes: <br>",
+                    "<i>Efficiency = Accessibility - Needs</i>", "<br>",
+                    "<i>Needs = mean(Population + Traffic + Amenity denisty)</i>")
+
+  stop_popup<-paste0("<strong>", bus_data$stop_name, "</strong>",
+                     "<br>Stop: <strong>",bus_data$stop_id,"</strong>")
   map <- leaflet(data = polyg_subset) %>%
     addPolygons(
       stroke = FALSE,  # remove polygon borders
@@ -432,8 +452,15 @@ map_maker_efficiency_quant <- function(data, mapTitle = "Quantitative Efficiency
     addLegend("bottomleft",  # location
               pal=pal_fun,    # palette function
               values=~variable,  # value to be passed to palette function
-              title = glue('{mapTitle} Map'))
+              title = glue('{mapTitle} Map'))  
   
+  if (add_stop==TRUE) {
+    map <- map %>% addCircles(data=bus_data, ~longitude, ~latitude, weight = 0.7, radius=8,
+                     color="#a7a7a7", stroke = TRUE, fillOpacity = 0.5,popup =stop_popup)
+    file_name <- glue('{mapTitle} Map with bus stops')
+    print(paste('Current Map:', file_name))
+  }
+
   if (view_map == TRUE) {
     return(map)
   } else {

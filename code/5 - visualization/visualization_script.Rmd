@@ -196,11 +196,18 @@ for (amenity in amenities) {
   }
 }
 
-# NEED EFFICIENCY DATA
+source('../0 - custom_functions/functions.R')
 
 # 2 efficiency maps
-map_maker_efficiency_cont(efficiency_frame_viz, output_dir = paste0(mappath, '/efficiency_maps'))
-map_maker_efficiency_quant(efficiency_frame_viz, output_dir = paste0(mappath, '/efficiency_maps'))
+map_maker_efficiency_cont(efficiency_frame_viz, 
+                          bus_data = station_locs,
+                          view = TRUE,
+                          output_dir = paste0(mappath, '/efficiency_maps'))
+
+map_maker_efficiency_quant(efficiency_frame_viz,
+                           bus_data = station_locs,
+                           view = TRUE,
+                           output_dir = paste0(mappath, '/efficiency_maps'))
 
 
 ```
@@ -208,6 +215,12 @@ map_maker_efficiency_quant(efficiency_frame_viz, output_dir = paste0(mappath, '/
 
 
 
+```{r}
+
+map_maker_efficiency_cont(efficiency_frame_viz, output_dir = paste0(mappath, '/efficiency_maps'))
+
+
+```
 
 
 
