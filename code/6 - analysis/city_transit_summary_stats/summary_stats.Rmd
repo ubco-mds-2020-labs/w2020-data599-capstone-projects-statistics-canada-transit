@@ -42,6 +42,77 @@ all_data
 ```
 
 ```{r}
+## overall score distributions
+all_data %>%
+  ggplot(aes(x = avg_score_to_nearest_amenity)) +
+  geom_density(size = 1) +
+  labs(x = 'Transit Accessibility Score') +
+  egg::theme_article() +
+  theme(aspect.ratio = 0.6,
+        text = element_text(size=22),
+        panel.grid.major = element_blank(),
+        panel.grid.minor = element_blank(),
+        axis.title.y = element_blank(),
+        axis.text.y = element_blank(),
+        axis.ticks.y = element_blank()) 
+ggsave('Overall Score Distribution.png', width = 8, height = 6)
+
+library(fmsb)
+all_data$avg_score_to_nearest_amenity[is.na(all_data$avg_score_to_nearest_amenity)] <- 0.001
+
+all_data$score_percentile <- percentile(all_data$avg_score_to_nearest_amenity)/100
+
+all_data %>%
+  ggplot(aes(x = score_percentile)) +
+  geom_density(size = 1) +
+  labs(x = 'Transit Accessibility Score Percentiles') +
+  egg::theme_article() +
+  theme(aspect.ratio = 0.6,
+        text = element_text(size=22),
+        panel.grid.major = element_blank(),
+        panel.grid.minor = element_blank(),
+        axis.title.y = element_blank(),
+        axis.text.y = element_blank(),
+        axis.ticks.y = element_blank()) 
+ggsave('Uniform Score Distribution.png', width = 8, height = 6)
+
+
+all_data %>%
+  ggplot(aes(x = time_to_nearest_amenity)) +
+  geom_density(size = 1) +
+  labs(x = 'Average Time to Nearest Amenity (min)') +
+  egg::theme_article() +
+  theme(aspect.ratio = 0.6,
+        text = element_text(size=22),
+        panel.grid.major = element_blank(),
+        panel.grid.minor = element_blank(),
+        axis.title.y = element_blank(),
+        axis.text.y = element_blank(),
+        axis.ticks.y = element_blank()) 
+
+ggsave('Overall Time Distribution to Nearest Amenity.png', width = 8, height = 6)
+
+all_data %>%
+  ggplot(aes(x = avg_time_to_any_amenity)) +
+  geom_density(size = 1) +
+  labs(x = 'Average Time to All Amenities (min)') +
+  egg::theme_article() +
+  theme(aspect.ratio = 0.6,
+        text = element_text(size=22),
+        panel.grid.major = element_blank(),
+        panel.grid.minor = element_blank(),
+        axis.title.y = element_blank(),
+        axis.text.y = element_blank(),
+        axis.ticks.y = element_blank()) 
+
+ggsave('Overall Time Distribution to Any Amenity.png', width = 8, height = 6)
+
+
+```
+
+
+
+```{r}
 
 # view how the data is balanced across neighborhoods
 city_frequency <- all_data %>%
