@@ -1,0 +1,124 @@
+---
+title: "Merge Travel Time Matrix to Amenity"
+author: "Rain Shen"
+output: html_notebook
+---
+
+## Merge Travel Time Matrix with Time Window to the amenities
+### Separated by days and by destinations (amenities)
+
+
+## 0) Useful Libraries
+
+```{r message=FALSE, warning=FALSE, include=TRUE}
+
+library(tidyverse)
+library(glue)
+library(stringr)
+library(sf)
+library(data.table)
+
+```
+
+
+## 1) Data Wrangling
+
+### Import all dissemination block data
+```{r}
+# import dissemination blocks and keep id and pop columns
+# origins <- fread(file.path("../data/clean", "vancouver_db.csv"))[, .(id, pop)]
+origins <- read.csv("vancouver_db.csv")
+
+# change col types
+origins$pop <- NULL  
+origins$id <- as.factor(origins$id)  
+
+n_origins <- nrow(origins)
+paste('Origin Rows: ', n_origins)
+
+# Peek
+head(origins)
+```
+
+
+### Import all amenity data
+```{r}
+# import amenities (Cultural/Art facilities)
+# destinations <- fread(file.path("../data/clean", "vancouver_facilities_2.csv"))
+destinations <- read.csv('vancouver_facilities_2.csv')
+
+# clean amenities / filter types to keep 4 most frequent amenities
+target_amenities <- c('gallery', 'museum', 'library or archives', 'theatre/performance and concert hall')
+destinations <- destinations %>% filter(type %in% target_amenities)
+
+# change col types
+destinations$type <- as.factor(destinations$type)
+destinations$id <- as.factor(destinations$id)  
+
+n_amenities <- nrow(destinations)
+paste('Destinations: ', n_amenities)
+head(destinations)
+```
+
+
+### Import the travel time matrix with time window
+```{r kable.opts=list(caption='Summary Table')}
+# import travel time matrix
+# ttm <- fread(file.path('../data/clean', 'ttm.csv'))
+
+ttm <- readRDS("TTM5.rds")
+
+# convert Ids to  factor
+ttm$fromId <- as.factor(ttm$fromId)
+ttm$toId <- as.factor(ttm$toId)
+
+
+# add amenity types
+# use left join since we only care to keep existing amenities in the ttm
+ttm <-  left_join(ttm, destinations, by = c('toId' = 'id'))
+
+ttm$name <- NULL
+ttm$city <- NULL
+ttm$city_id <- NULL
+head(ttm)
+
+# If we want the location of amenities, un-comment the follow 2 lines
+# ttm$lat <- NULL
+# ttm$lon <- NULL
+```
+
+#### Isochrones map to the nearest amenity
+
+```{r}
+
+# only consider the nearest amenity
+near1 <- ttm %>%
+  group_by(fromId, type, t1) %>%
+  summarise(avg_time = min(travel_time),
+            Dest = toId[which.min(travel_time)],
+            Latitude = lat[which.min(travel_time)],
+            Longitude = lon[which.min(travel_time)])
+
+
+# Remove null values
+na.omit(near1)->near1
+
+```
+
+```{r}
+# Columns for all the origins
+near1_from <- near1[ , c(1,2,3,4)]
+
+# Columns for all the destinations
+near1_to <- near1[ , c(2,5,6,7)]
+```
+
+```{r}
+## Export
+write.csv(near1_from, 'ttm5_from.csv', row.names = FALSE)
+write.csv(near1_to, 'ttm5_to.csv', row.names = FALSE)
+
+# Overall
+write.csv(near1, 'ttm5_719.csv', row.names = FALSE)
+```
+
