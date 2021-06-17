@@ -361,7 +361,7 @@ map_maker_efficiency_cont <- function(data, mapTitle = "Continuous Efficiency", 
   variable <- polyg_subset$eff
   
   # colour palette 
-  Bl2Rd <- c("#FF0000", "#FA8072", "#F9A7B0", "#FFFFFF", "#FFFFFF", "#FFFFFF", "#ADDFFF", "#1589FF", "#0000FF")
+  Bl2Rd <- c("#FA8072", "#F9A7B0", "#FFFFFF", "#FFFFFF", "#FFFFFF", "#FFFFFF", "#ADDFFF", "#1589FF")
   pal_fun <- colorNumeric(palette = Bl2Rd, NULL, n = 9)
   
   # popup # percentile(score_vec),
@@ -408,9 +408,7 @@ map_maker_efficiency_quant <- function(data, mapTitle = "Quantitative Efficiency
   variable <- polyg_subset$eff
   
   # colour palette 
- # A2RV1 <- c("#8B0000", "#FA8072", "#F9A7B0", "#FFFFFF", "#ADDFFF", "#1589FF", "#0000A5")
-  Bl2Rd <- c("#FF0000", "#FA8072", "#F9A7B0", "#FFFFFF", "#ADDFFF", "#1589FF", "#0000FF")
-  Bl2Rd10 <- c("#FF0000", "#F9A7B0", "#FFFFFF", "#FFFFFF", "#FFFFFF", "#FFFFFF", "#FFFFFF", "#FFFFFF", "#ADDFFF", "#1589FF")
+  Bl2Rd <- c("#FA8072", "#F9A7B0", "#FFFFFF", "#FFFFFF", "#FFFFFF", "#FFFFFF", "#ADDFFF", "#1589FF")
   pal_fun <- colorQuantile(palette = Bl2Rd10, NULL, n = 10)
   
   # popup # percentile(score_vec),
