@@ -1,0 +1,222 @@
+# Vancouver General Analysis
+
+## Data Preparation
+
+```{r}
+
+library(data.table)
+library(tidyverse)
+library(readr)
+library(ggplot2)
+
+path_data <- "../../../data/"
+
+origins <- fread(file.path(paste0(path_data, "2_clean/vancouver_db.csv")))[,1:2]
+origins$id <- as.character(origins$id)
+
+
+TTM <- read.table(gzfile(paste0(path_data, "3_computed/main_travel_time_matrix--time_aggregated.csv.gz"),
+                         "main_travel_time_matrix--time_aggregated.csv"), header=T, quote="\"", sep=",")
+TTM$fromId <- as.character(TTM$fromId)
+
+# aggregate on from Id
+TTM2 <- TTM %>%
+          group_by(fromId) %>%
+          summarise(time_to_nearest_amenity = min(avg_time),
+                    avg_time_to_any_amenity = mean(avg_time))
+
+
+scores <- fread(file.path(paste0(path_data, "3_computed/accessibility_measures/scores_frame.csv")))
+scores$fromId <- as.character(scores$fromId)
+
+# aggregate on from Id
+scores2 <- scores %>% filter(weight == 'no' & nearest_n == '1') %>%
+            group_by(fromId) %>%
+            summarize(avg_score_to_nearest_amenity = mean(score))
+
+
+all_data <- left_join(origins, scores2, by = c('id' = 'fromId'))
+all_data <- left_join(all_data, TTM2, by = c('id' = 'fromId'))
+all_data
+
+```
+
+```{r}
+
+# view how the data is balanced across neighborhoods
+city_frequency <- all_data %>%
+                    group_by(subdiv) %>%
+                    summarize(freq = n()) %>%
+                    arrange(desc(freq))
+
+city_frequency %>%
+  ggplot(aes(x = freq, y = reorder(subdiv, +freq))) +
+  geom_bar(stat='identity') +
+  theme_classic() +
+  labs(x = 'Count',
+       y = '', title = 'Total Dissemination Blocks by City Subdivision')
+
+# based on the bar graph we can remove cities below Port Coquitlam
+cities_to_keep <- city_frequency$subdiv[city_frequency$freq >= city_frequency$freq[city_frequency$subdiv == 'Port Coquitlam']]
+
+all_data_small <- all_data %>% filter(subdiv %in% cities_to_keep)
+
+# check
+all_data_small %>%
+  group_by(subdiv) %>%
+  summarize(freq = n()) %>%
+  arrange(desc(freq)) %>%
+  ggplot(aes(x = freq, y = reorder(subdiv, +freq))) +
+  geom_bar(stat='identity') +
+  theme_classic() +
+  labs(x = 'Count',
+       y = '', title = 'Total Dissemination Blocks in Largest City Subdivisions')
+
+```
+
+
+## City Transit Accessibility Ditribution
+
+### Score Distribution
+```{r}
+
+all_data_small %>%
+  ggplot(aes(x = avg_score_to_nearest_amenity)) +
+  geom_density(aes(fill = subdiv), alpha = 0.4) +
+  guides(fill=guide_legend(title= 'Subdivision')) +
+  scale_x_continuous('Accessibility Score', breaks = c(0, 0.1, 0.2, 0.3), limits = c(0, 0.3)) +
+  scale_y_continuous(breaks = c(0, 12, 24)) +
+  labs(title = 'Transit Accessibility Score Distributions',
+       subtitle = 'To reach the nearest cultural amenities across Vancouver Subdivisions') +
+  theme_minimal() +
+  theme(aspect.ratio = 0.6,
+        panel.grid.major.x = element_line(colour="lightgray", size=0.05),
+        panel.grid.major.y = element_line(colour="lightgray", size=0.05),
+        panel.grid.minor.y = element_blank(),
+        axis.title.y = element_blank(),
+        axis.text.y = element_blank(),
+        axis.ticks.y = element_blank()) +
+  facet_wrap(vars(subdiv), nrow = 3)
+
+
+
+all_data_small %>%
+  ggplot(aes(x = avg_score_to_nearest_amenity)) +
+  geom_density(aes(fill = subdiv), alpha = 0.4) +
+  guides(fill=guide_legend(title= 'Subdivision')) +
+  scale_x_continuous('Accessibility Score', breaks = c(0, 0.1, 0.2, 0.3), limits = c(0, 0.3)) +
+  scale_y_continuous(breaks = c(0, 12, 24)) +
+  labs(title = 'Transit Accessibility Score Distributions',
+       subtitle = 'To reach the nearest cultural amenities across Vancouver Subdivisions') +
+  theme_minimal() +
+  theme(aspect.ratio = 0.6,
+        panel.grid.major.x = element_line(colour="lightgray", size=0.05),
+        panel.grid.major.y = element_line(colour="lightgray", size=0.05),
+        axis.title.y = element_blank(),
+        axis.text.y = element_blank(),
+        axis.ticks.y = element_blank()) 
+
+```
+
+### Time Distribution
+```{r}
+
+all_data_small %>%
+  ggplot(aes(x = time_to_nearest_amenity, fill = subdiv)) +
+  geom_density(alpha = 0.4) +
+  scale_x_continuous('Time (min)') +
+  scale_y_continuous(breaks = c(0, 0.03, 0.06)) +
+  labs(title = 'Transit Accessibility Time Distributions',
+       subtitle = 'To reach the nearest cultural amenities across Vancouver Subdivisions') +
+  theme_minimal() +
+  #egg::theme_article() + 
+  theme(aspect.ratio = 0.6,
+        panel.grid.major.x = element_line(colour="lightgray", size=0.05),
+        axis.title.y = element_blank(),
+        axis.text.y = element_blank(),
+        axis.ticks.y = element_blank()) +
+  facet_wrap(vars(subdiv), nrow = 3)
+
+all_data_small %>%
+  ggplot(aes(x = time_to_nearest_amenity, fill = subdiv)) +
+  geom_density(alpha = 0.4) +
+  scale_x_continuous('Time (min)') +
+  scale_y_continuous(breaks = c(0, 0.03, 0.06)) +
+  labs(title = 'Transit Accessibility Time Distributions',
+       subtitle = 'To reach the nearest cultural amenities across Vancouver Subdivisions') +
+  theme_minimal() +
+  #egg::theme_article() + 
+  theme(aspect.ratio = 0.6,
+        panel.grid.major.x = element_line(colour="lightgray", size=0.05),
+        axis.title.y = element_blank(),
+        axis.text.y = element_blank(),
+        axis.ticks.y = element_blank()) 
+```
+
+```{r}
+
+all_data_small %>%
+  ggplot(aes(x = avg_time_to_any_amenity, fill = subdiv)) +
+  geom_density(alpha = 0.4) +
+  scale_x_continuous('Accessibility Measure') +
+  scale_y_continuous(breaks = c(0, 0.1)) +
+  labs(title = 'Transit Accessibility Time Distributions',
+       subtitle = 'To reach the any cultural amenity across Vancouver Subdivisions') +
+  theme_minimal() +
+  #egg::theme_article() + 
+  theme(aspect.ratio = 0.6,
+        panel.grid.major.x = element_line(colour="lightgray", size=0.05),
+        axis.title.y = element_blank(),
+        axis.text.y = element_blank(),
+        axis.ticks.y = element_blank()) +
+  facet_wrap(vars(subdiv), nrow = 3)
+
+all_data_small %>%
+  ggplot(aes(x = avg_time_to_any_amenity, fill = subdiv)) +
+  geom_density(alpha = 0.4) +
+  scale_x_continuous('Accessibility Measure') +
+  scale_y_continuous(breaks = c(0, 0.1)) +
+  labs(title = 'Transit Accessibility Time Distributions',
+       subtitle = 'To reach the any cultural amenity across Vancouver Subdivisions') +
+  theme_minimal() +
+  #egg::theme_article() + 
+  theme(aspect.ratio = 0.6,
+        panel.grid.major.x = element_line(colour="lightgray", size=0.05),
+        axis.title.y = element_blank(),
+        axis.text.y = element_blank(),
+        axis.ticks.y = element_blank())
+
+```
+
+
+
+## Does weight have an impact?
+
+!!!!!!! weights are identical to non weights !!!!!!! check code
+
+```{r}
+scores_wt <- scores %>% filter(nearest_n == '1') %>%
+                group_by(fromId) %>%
+                summarize(avg_score_to_nearest_amenity = mean(score), weight = weight)
+                
+scores_wt <- left_join(origins, scores_wt, by = c('id' = 'fromId')) %>% filter(subdiv %in% cities_to_keep)
+
+
+scores_wt %>%
+  ggplot(aes(x = avg_score_to_nearest_amenity, fill = weight)) +
+  geom_density(alpha = 0.4) +
+  scale_x_continuous('Accessibility Measure') +
+  scale_y_continuous(breaks = c(0, 0.1)) +
+  labs(title = 'Transit Accessibility Time Distributions',
+       subtitle = 'To reach the any cultural amenity across Vancouver Subdivisions') +
+  theme_minimal() +
+  #egg::theme_article() + 
+  theme(aspect.ratio = 0.6,
+        panel.grid.major.x = element_line(colour="lightgray", size=0.05),
+        axis.title.y = element_blank(),
+        axis.text.y = element_blank(),
+        axis.ticks.y = element_blank()) 
+    #facet_wrap(vars(subdiv), nrow = 3)
+
+```
+
