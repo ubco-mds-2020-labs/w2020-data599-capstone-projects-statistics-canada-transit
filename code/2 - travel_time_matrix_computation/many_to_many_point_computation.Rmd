@@ -23,6 +23,8 @@ library(rJava)
 library(tidyverse)
 library(glue)
 library(rlist)
+library(lubridate)
+
 
 # For pretty knitting
 library(lemon)
@@ -48,9 +50,8 @@ transit network in R using the r5r library.
 # allocate an appropriate RAM to Java
 options(java.parameters = "-Xmx6g")
 
-# build the transit network
-# OSM file and GTFS.zip are in the same directory in this case
-r5r_core <- setup_r5(data_path = getwd(), verbose = FALSE)
+# build transport network, pointing to path where OSM and GTFS data are located
+r5r_core <- setup_r5(data_path ='../../data/1_raw/transit_and_osm_data/', verbose = FALSE)
 
 ```
 
@@ -84,7 +85,7 @@ head(origins)
 ## DESTINATIONS
 
 # cultural/Art facilities
-destinations <- fread(file.path(paste0(path_data, "vancouver_amenities.csv")))
+destinations <- fread(file.path(paste0(path_data, "vancouver_facilities.csv")))
 
 # see summary counts of each amenity
 destinations %>% group_by(type) %>% summarise(count = n()) %>% arrange(desc(count))
@@ -98,6 +99,7 @@ target_amenities <- c('gallery',
 destinations <- destinations %>% filter(type %in% target_amenities)
 
 # keep id, lat, and lon columns
+amenity_types <- destinations[, c(1,4)]
 destinations <- destinations[, 1:3]
 
 destinations$lat <-  as.numeric(destinations$lat) # char to numeric
@@ -149,21 +151,18 @@ of 30 minutes.
 *cell can take a few hours to execute. Please be patient or consider using*
 *less origins or destinations or time points.*
 
-```{r message=FALSE, warning=FALSE, include=TRUE, eval=FALSE}
+```{r}
+# use a sample to test before running full computation
+#sample <- origins[sample(nrow(origins), 5), ] 
 
-# collect each travel time matrix from every hour
+# collect each TTM
 all_ttms <- list()
-all_hours <- c()
 
-# time range from 07:00 to 19:00
-list1 <- 7:19
+# dataframe to create a column for types
+amenity_types$id <- as.character(amenity_types$id)
 
 
-for (day in 14:16) {  # May 14=Fri, 15=Sat, 16=Sun
-  
-  hourly <- c()
-  t1 <- c()
-  
+for (day in 14:16) {          # May 14=Fri, 15=Sat, 16=Sun
   for (time in 7:19) {        # 7 to 19 hours
     
     departure_datetime <- as.POSIXct(glue("{day}-05-2021 {time}:00:00"), format="%d-%m-%Y %H:%M:%S")
@@ -181,49 +180,30 @@ for (day in 14:16) {  # May 14=Fri, 15=Sat, 16=Sun
                           max_rides = max_rides,
                           verbose = FALSE)
     
-    # collect time for each trip based on the number of travel time (row) computed by r5r
-    hourly <- append(hourly, nrow(ttm))
+    # format time and date to weekday
+    time_formatted <- format(strptime(as.character(time), format="%H"), format = "%H:%M")
+    day_formatted <- weekdays(departure_datetime)
     
-    # do NOT use rbind(all_ttm, ttm), it is insultingly slow
+    ttm$hour <- rep(time_formatted, nrow(ttm))
+    ttm$day <- rep(day_formatted, nrow(ttm))
+    
+    ttm <- left_join(ttm, destinations_with_type, by = c('toId' = 'id'))
+    
     # append to a list then use rbindlist
     all_ttms <-  list.append(all_ttms, ttm)
     
     print(glue('Progress: {round(((day-14)*12 + time-6)/37*100, 1)}%'))
   }
-  
-# To add time column for each day (hourly)
-
-  for (i in 1:length(hourly)) {  # number of travel time computed per hour depends on r5r
-    
-    t <- rep(list1[i], times = hourly[i])
-    t1 <- append(t1, t)
-  }
-  
-  t0 <- t1[1:sum(hourly[1:3])]
-  
-  t0 <- paste0("0", t0)
-  t1[1:sum(hourly[1:3])] <- t0
-  
-  t2 <- mapply(function(x,y) paste0(rep(x,y), collapse = ""), 0, 4 - nchar(t1))
-  t1 <- paste0(t1, t2)
-  
-  # convert to time format
-  t1 <- format(strptime(t1, format="%H%M"), format = "%H:%M") 
-  
-  all_hours <-  append(all_hours, t1)
-  
 }
 
+
 # Fast way to bind all data.frames
-
 TTM <- rbindlist(all_ttms)
-
-# Add time column to the travel time matrix
-all_hours_ttms <- cbind(all_hours, TTM)
 
 print('COMPLETED')
 
-summary(all_hours_ttms)
+nrow(TTM)
+
 ```
 
 
@@ -236,6 +216,14 @@ so we aggregate on the origin and destination (ie. on every unique trip).
 
 ```{r message=FALSE, warning=FALSE, include=TRUE, eval=FALSE}
 
+# aggregate for kepler hour/day visualization
+
+for_kepler <- TTM %>%
+  group_by(fromId, type, hour, day) %>%
+  summarise(time_to_nearest1 = min(travel_time))
+
+
+# aggregate for individual trips across all days and time
 TTM_agg <- TTM %>%
            group_by(fromId, toId) %>% 
            summarise(
@@ -244,6 +232,25 @@ TTM_agg <- TTM %>%
            )
 
 ```
+
+
+```{r}
+
+# Export the unaggregated files for kepler
+write_csv(for_kepler, paste0(path, "all_days_ttm.csv.gz"))
+
+fri_ttm <- for_kepler %>% filter(day == 'Friday')
+sat_ttm <- for_kepler %>% filter(day == 'Saturday')
+sun_ttm <- for_kepler %>% filter(day == 'Sunday')
+
+path <- "../../data/3_computed/ttm_by_day/"
+
+write_csv(fri_ttm, paste0(path, "friday_ttm.csv.gz"))
+write_csv(sat_ttm, paste0(path, "saturday_ttm.csv.gz"))
+write_csv(sun_ttm, paste0(path, "sunday_ttm.csv.gz"))
+
+```
+
 
 
 ```{r message=FALSE, warning=FALSE, include=TRUE}
