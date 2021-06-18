@@ -49,7 +49,7 @@ sum_score_fxn <- function(df, nearest_n = NULL, weight = FALSE, log_normalize_sc
     
     # compute score with or without weight 
     if (weight == TRUE) {
-      df$unique_score <- (1 + df$weight) / (df$avg_time + 2*df$sd_time)
+      df$unique_score <- (1+df$weight) / (df$avg_time + 2*df$sd_time)
     } else {
       df$unique_score <- 1 / (df$avg_time + 2*df$sd_time)
     }
@@ -162,7 +162,10 @@ NA_table_filler <- function(df, custom_idx = NULL, frame_type) {
   }
 
   # get the NA filler rows
-  filler_rows <- rbindlist(apply(id_arr, MARGIN = 1, FUN = NA_grid_maker, df = df, frame_type = frame_type))
+  filler_rows <- rbindlist(apply(id_arr, MARGIN = 1,
+                                  FUN = NA_grid_maker,
+                                  df = df,
+                                  frame_type = frame_type))
 
   # append to input dataframe sort them
   df <- rbindlist(list(df, filler_rows), use.names = TRUE) 
