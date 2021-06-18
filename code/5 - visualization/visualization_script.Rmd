@@ -163,8 +163,8 @@ efficiency_frame_viz <- mapping_data_prepper(vancouver_shape, efficiency_frame,
 ```{r}
 
 amenities <- unique(scores_viz_frame$type)
-weights <- unique(scores_viz_frame_st$weight)
-nearest_n <- unique(scores_viz_frame_st$nearest_n)
+weights <- unique(scores_viz_frame$weight)
+nearest_n <- unique(scores_viz_frame$nearest_n)
 bus_levels <- c(TRUE,FALSE)
 
 # Custom for loop for specific map outputting
@@ -201,26 +201,18 @@ source('../0 - custom_functions/functions.R')
 # 2 efficiency maps
 map_maker_efficiency_cont(efficiency_frame_viz, 
                           bus_data = station_locs,
-                          view = TRUE,
+                          #view = TRUE,
                           output_dir = paste0(mappath, '/efficiency_maps'))
 
 map_maker_efficiency_quant(efficiency_frame_viz,
                            bus_data = station_locs,
-                           view = TRUE,
+                           #view = TRUE,
                            output_dir = paste0(mappath, '/efficiency_maps'))
 
 
 ```
 
 
-
-
-```{r}
-
-map_maker_efficiency_cont(efficiency_frame_viz, output_dir = paste0(mappath, '/efficiency_maps'))
-
-
-```
 
 
 

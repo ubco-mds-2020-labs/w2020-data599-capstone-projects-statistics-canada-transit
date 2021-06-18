@@ -410,8 +410,8 @@ map_maker_efficiency_cont <- function(data, bus_data, add_stop = TRUE, mapTitle 
   variable <- polyg_subset$eff
   
   # colour palette 
-  Bl2Rd <- c("#FA8072", "#fcd7db", "#FFFFFF", "#FFFFFF", "#FFFFFF", "#ADDFFF", "#1589FF")
-  pal_fun <- colorNumeric(palette = Bl2Rd, NULL, n = 9)
+  Bl2Rd <- c("#FF0000", "#FA8072", "#fcd7db", "#FFFFFF", "#FFFFFF", "#FFFFFF", "#FFFFFF", "#ADDFFF", "#1589FF", "#0000FF")
+  pal_fun <- colorNumeric(palette = Bl2Rd, NULL, n = 10)
   
    p_popup <- paste0("<h3>Efficiency Score: <strong>", round(variable, 2), "</strong></h3>",
                     "<i> The closer to zero, the better.</i>", "<br><br>",
@@ -468,8 +468,8 @@ map_maker_efficiency_quant <- function(data, bus_data, add_stop = TRUE, mapTitle
   variable <- polyg_subset$eff
   
   # colour palette 
-  Bl2Rd <- c("#FA8072", "#fcd7db", "#FFFFFF", "#FFFFFF", "#FFFFFF", "#FFFFFF",  "#FFFFFF", "#FFFFFF", "#ADDFFF", "#1589FF")
-  pal_fun <- colorQuantile(palette = Bl2Rd, NULL, n = 10)
+  Bl2Rd <- c("#FA8072", "#fcd7db", "#FFFFFF", "#FFFFFF",  "#FFFFFF", "#FFFFFF", "#ADDFFF", "#1589FF")
+  pal_fun <- colorQuantile(palette = Bl2Rd, NULL, n = 8)
   
   # popup # percentile(score_vec),
   #percentile <- ecdf(polyg_subset$mean_score)

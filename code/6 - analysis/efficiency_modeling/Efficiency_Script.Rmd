@@ -59,7 +59,7 @@ origins <-  fread(file.path("../../../data/2_clean/vancouver_db.csv"))
 
 traffic_data <- read.csv(paste0(datapath, '1_raw/traffic_data/BC_traffic_data_2015_summary.csv'), stringsAsFactors = FALSE)[c(9,10,16:37)]
 
-amenity_density <- read.csv('../../../data/3_computed/amenity_density.csv', stringsAsFactors = FALSE)
+amenity_density <- read.csv('../../../data/3_computed/transit_efficiency/amenity_density.csv', stringsAsFactors = FALSE)
 
 
 # change col types
