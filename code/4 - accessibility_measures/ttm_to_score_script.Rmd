@@ -47,6 +47,28 @@ comppath <- "../../data/3_computed/"
 
 ## 1) Setting Up the Travel Time Matrix
 
+
+### Import the travel time matrix
+```{r kable.opts=list(caption='Summary Table')}
+
+# import travel time matrix
+ttm <- read.table(gzfile(paste0(comppath, "main_travel_time_matrix--time_aggregated.csv.gz"),
+                         "main_travel_time_matrix--time_aggregated.csv"), # file within zip
+                  header=T, quote="\"", sep=",") # format into a table
+
+# convert Ids to  factor
+ttm$fromId <- as.factor(ttm$fromId)
+ttm$toId <- as.factor(ttm$toId)
+
+## Replace travel times less than 1 minute to 1 minute
+# This is done to prevent infinity values in the scoring since
+# 1 minute is still a reasonable time for trips in the 0 - 1 min range.
+ttm$avg_time <- pmax(ttm$avg_time, 1)
+
+# peek
+head(ttm)
+```
+
 ### Import all dissemination block data
 ```{r}
 # import dissemination blocks and keep id and pop columns
@@ -114,27 +136,6 @@ paste('Are all the ttm amenity IDs in the weighted IDs set? =', check)
 
 ```
 
-### Import the travel time matrix
-```{r kable.opts=list(caption='Summary Table')}
-
-# import travel time matrix
-ttm <- read.table(gzfile(paste0(comppath, "main_travel_time_matrix--time_aggregated.csv.gz"),
-                         "main_travel_time_matrix--time_aggregated.csv"), # file within zip
-                  header=T, quote="\"", sep=",") # format into a table
-
-# convert Ids to  factor
-ttm$fromId <- as.factor(ttm$fromId)
-ttm$toId <- as.factor(ttm$toId)
-
-## Replace travel times less than 1 minute to 1 minute
-# This is done to prevent infinity values in the scoring since
-# 1 minute is still a reasonable time for trips in the 0 - 1 min range.
-ttm$avg_time <- pmax(ttm$avg_time, 1)
-
-# peek
-head(ttm)
-```
-
 
 ### Fixed unequal number of ttm amenity IDs in the weighted IDs If check == False
 ```{R}
@@ -187,6 +188,7 @@ paste('Rows = ', nrow(ttm))
 ```
 
 
+
 ## 2) Computing a Transit Accessibility Score
 
 Notes: 
@@ -207,7 +209,8 @@ i <- 1
 
 for (n in 1:4) {
   
-  # we want average of all times so N must be undefined
+  # we want nearest 1,2,3, and ALL
+  # so at n = 4 we reassign n as NULL
   if (n == 4) { n <- NULL }
   
   # unweighted score
@@ -223,6 +226,7 @@ for (n in 1:4) {
   
 }
 
+# bind the score frames together and sort them by DBUID
 scores_long_unweighted <- rbindlist(score_list) %>% arrange(fromId, nearest_n)
 scores_long_weighted <- rbindlist(score_list_weighted) %>% arrange(fromId, nearest_n)
 
@@ -273,80 +277,56 @@ In addition to filling these missing values of the 32 expected values,
 there are also IDs that need to entirely be re-added since they may 
 not have any transit and so wouldn't be in the dataframe to begin with.
 
+### Accessibility Scores Frame
 
 ```{r}
-# values per ID (32)
-x <- 2*4*4
+source('../0 - custom_functions/functions.R')
 
-paste('SCORES FRAME')
+# values per ID = 4 * 4 * 2 = 32
 
-# HOW MANY ROWS TO FILL IN SCORES?
+# initial check
+missing_scores <- check_rows(check_frame = scores_long,
+                             origins_frame = origins,
+                             rows_per_dissemination_block = 32,
+                             frame_type = 'ACCESSIBILITY SCORES FRAME')
 
-N <- uniqueN(scores_long$fromId) * x # expected rows
-paste(glue('{nrow(scores_long)} of {N} rows filled ({round((nrow(scores_long) / N)*100, 2)}%)'))
-paste(N - nrow(scores_long), 'to fill.')
+# fill
+all_scores_long <- NA_table_filler(scores_long,
+                                   custom_idx = missing_scores,
+                                   frame_type = 'score')
 
-cat(paste0('\n')) # line break
+# post fill check
+missing_scores <- check_rows(check_frame = all_scores_long,
+                             origins_frame = origins,
+                             rows_per_dissemination_block = 32,
+                             frame_type = 'POST FILL CHECK: SCORES FRAME')
 
-# HOW MANY ROWS TO ADD IN SCORES?
 
-# missing blocks are IDs that should appear in the frame but dont.
-missing_blocks <- array(setdiff(origins$id, scores_long$fromId))
-
-total_expected <- nrow(scores_long) + length(missing_blocks) * x
-paste(glue('{nrow(scores_long)} of {total_expected} rows filled ({round((nrow(scores_long) / total_expected)*100, 2)}%)'))
-paste(length(missing_blocks)*x, 'to add')
 ```
+### Isochrone Frame
 
 ```{r}
-paste0('ISOCHRONE FRAME')
+# values per ID = 4 
 
-# HOW MANY ROWS TO FILL IN ISOCHRONE?
+# initial check
+missing_times <- check_rows(check_frame = isochrone_frame,
+                             origins_frame = origins,
+                             rows_per_dissemination_block = 4,
+                             frame_type = 'ISOCHRONE FRAME')
 
-N <- uniqueN(isochrone_frame$fromId) * 4 # expected rows
-paste(glue('{nrow(isochrone_frame)} of {N} rows filled ({round((nrow(isochrone_frame) / N)*100, 2)}%)'))
-paste(N - nrow(isochrone_frame), 'to fill.')
+# fill
+all_isochrone_frame <- NA_table_filler(isochrone_frame,
+                                   custom_idx = missing_times,
+                                   frame_type = 'isochrone')
 
-cat(paste0('\n')) # line break
-
-# HOW MANY ROWS TO ADD IN ISOCHRONE?
-
-# missing blocks are IDs that should appear in the frame but dont.
-missing_blocks <- array(setdiff(origins$id, isochrone_frame$fromId))
-
-total_expected <- nrow(isochrone_frame) + length(missing_blocks) * 4 # only 4 values per origin
-paste(glue('{nrow(isochrone_frame)} of {total_expected} rows filled ({round((nrow(isochrone_frame) / total_expected)*100, 2)}%)'))
-paste(length(missing_blocks)*4, 'to add')
-
+# post fill check
+missing_times <- check_rows(check_frame = all_isochrone_frame,
+                             origins_frame = origins,
+                             rows_per_dissemination_block = 4,
+                             frame_type = 'ISOCHRONE FRAME')
 ```
 
-```{r}
-# fill NA for existing origin IDs
-filled_scores_long <- NA_table_filler(scores_long)
 
-# add remaining NAs to filled_scores_long
-all_scores_long <- NA_table_filler(filled_scores_long,
-                                   custom_idx = missing_blocks)
-
-
-# fill NA for all existing origin IDs
-filled_isochrone_frame <- NA_table_filler(isochrone_frame, isochrone = TRUE)
-
-# add missing NAs to isochrone frame
-all_isochrone_frame <- NA_table_filler(filled_isochrone_frame,
-                                       custom_idx = missing_blocks,
-                                       isochrone=TRUE)
-
-
-# check isochrones: there should be 4 counts per fromId
-iso_id_counts <- all_isochrone_frame %>% group_by(fromId) %>% summarise(n = n())
-unique(iso_id_counts$n)
-
-# check scores: there should be 32 counts per fromId
-score_id_counts <- all_scores_long %>% group_by(fromId) %>% summarise(n = n())
-unique(score_id_counts$n)
-
-```
 
 **Final step!**
 

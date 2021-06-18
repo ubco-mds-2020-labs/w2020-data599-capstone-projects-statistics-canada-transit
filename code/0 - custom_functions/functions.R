@@ -35,44 +35,51 @@ normalize_df <- function(df, x = 0.01, y = 0.99, log = FALSE) {
 # nearest 1, 2, 3, ... , n amenities.
 #  score SUM [i..n] (1/(mean_traveltime_i + 2*std_traveltime_j) + 1/...  + 1/...   ...))
 
-sum_score_fxn <- function(df, nearest_n = NULL, weight = FALSE, log_normalize_score = FALSE, x = 0, y = 1) {
-  
-  # if no nearest n was specified, then get score for all travel time matrix trips
-  # if a nearest n was specified then index the nearest_n trip times
-  # if no weight was specified then don't use amenity weights in the score
-  if (!is.null(nearest_n) & weight == FALSE) {
-    # keep only nearest_n travel times
-    df <- df %>%
-      group_by(fromId, type) %>%
-      summarize(avg_time = na.omit(sort(avg_time)[1:nearest_n]),
-                sd_time = sd_time[which(avg_time == na.omit(sort(avg_time)[1:nearest_n]))])
-    # compute score for each row 
-    df$unique_score <- 1 / (df$avg_time + 2*df$sd_time)
+sum_score_fxn <- function(df, nearest_n = NULL, weight = FALSE, log_normalize_score = FALSE, x = 0.01, y = 0.99) {
 
-  } else if (!is.null(nearest_n) & weight == TRUE) {
-    # keep only nearest_n travel times and include weights
+  # filter nearest_n rows
+  if (!is.null(nearest_n)) {
+    
+    # filter only the nearest_n travel times
     df <- df %>%
       group_by(fromId, type) %>%
       summarize(avg_time = na.omit(sort(avg_time)[1:nearest_n]),
                 sd_time = sd_time[which(avg_time == na.omit(sort(avg_time)[1:nearest_n]))],
                 weight = weight[which(avg_time == na.omit(sort(avg_time)[1:nearest_n]))])
-    # compute score for each row and include weights
-    df$unique_score <- (1 + df$weight) / (df$avg_time + 2*df$sd_time) 
-
-  } else if (is.null(nearest_n) & weight == FALSE) {
-    # include all rows and compute scores for each row with weight
-    df$unique_score <- 1 / (df$avg_time + 2*df$sd_time) 
-
-  } else if (is.null(nearest_n) & weight == TRUE) {
-    # include all rows and compute scores for each row 
-    df$unique_score <- (1 + df$weight) / (df$avg_time + 2*df$sd_time) 
+    
+    # compute score with or without weight 
+    if (weight == TRUE) {
+      df$unique_score <- (1 + df$weight) / (df$avg_time + 2*df$sd_time)
+    } else {
+      df$unique_score <- 1 / (df$avg_time + 2*df$sd_time)
+    }
+    
+  # include all rows
+  } else if (is.null(nearest_n)) {
+    
+    #compute scores with or without weight 
+    if (weight == TRUE) {
+      df$unique_score <- (1 + df$weight) / (df$avg_time + 2*df$sd_time)
+    } else {
+      df$unique_score <- 1 / (df$avg_time + 2*df$sd_time)
+    }
+    
   }
 
-  ## sum scores and normalize
+  # sum the scores and normalize
+  # if nearest_n == 1 the results will not change
   df <- df %>% 
+    
+    # group on unique trips and amenity types
     group_by(fromId, type) %>% 
+    
+    # sum the scores - only makes a difference is nearest_n > 1
     summarize(score = sum(unique_score)) %>%
+    
+    # group by types to normalize by the types
     group_by(type) %>%
+    
+    # normalize and add column labels for the score
     mutate(score = normalize_vec(score, x = x, y = y, log = log_normalize_score),
            weight = as.factor(ifelse(weight == FALSE, 'no', 'yes')),
            nearest_n = as.factor(ifelse(is.null(nearest_n), 'all', as.character(nearest_n))))
@@ -98,7 +105,7 @@ NA_grid_maker <- function(id, df, frame_type) {
   # create NA rows to append via expand.grid (creates a row for every factor combination)
   if (frame_type == 'efficiency') {
 
-    # it doesn't really expand a grid because there are no factors! can be updated
+    # it doesn't really expand a grid because there are no factors! can be updated in the future
     NA_rows <- expand.grid('fromId' = id, 'mean_score' = NA,
                            'pop' = NA, 'amn_dens' = NA,
                            'trafficScore' = NA, 'need' = NA,
@@ -108,7 +115,8 @@ NA_grid_maker <- function(id, df, frame_type) {
     all_amenities <- as.character(unique(df$type))
     # get missing amenities by indexing the present amenities at each fromId
     missing_amenities <- setdiff(all_amenities, unique(df$type[df$fromId == id]))
-  }
+  } 
+  
   if (frame_type == 'score') {
     
     NA_rows <- expand.grid('fromId' = id, 'type' = missing_amenities,
@@ -137,12 +145,20 @@ NA_table_filler <- function(df, custom_idx = NULL, frame_type) {
   fromId_counts <- df %>% group_by(fromId) %>% mutate(n = n())
   x <- max(fromId_counts$n)
 
+  # if no custom indx is provided just fill
+  # other wise fill and then add missing index rows
   if (is.null(custom_idx)) {
+
     # create a fromId array using Ids that don't meet the [x] count requirement
     id_arr <- array(unique(fromId_counts[fromId_counts$n < x, ]$fromId))
+
   } else {
+
+    # fill first then use custom index
+    df <- NA_table_filler(df, frame_type = frame_type)
     # use a custom index of fromIds (for example those missing from the frame)
     id_arr <- custom_idx
+
   }
 
   # get the NA filler rows
@@ -160,6 +176,33 @@ NA_table_filler <- function(df, custom_idx = NULL, frame_type) {
   }
   
   df
+}
+
+# a function that checks how many rows are missing in a given accessibility measure data frane
+# and returns the IDs that are missing in an array called missing_blocks
+
+check_rows <- function(check_frame, origins_frame, rows_per_dissemination_block, frame_type) {
+  
+  print(paste(frame_type))
+  cat(paste0('\n')) # line break
+
+  # HOW MANY ROWS TO FILL IN SCORES?
+  n <- nrow(check_frame)
+  N <- uniqueN(check_frame$fromId) * rows_per_dissemination_block
+  print(paste(glue('{n} of {N} rows filled ({round((n/N)*100, 2)}%)')))
+  print(paste(N - n, 'existing IDs to fill.'))
+  cat(paste0('\n')) # line break
+
+  # HOW MANY ROWS TO ADD IN SCORES?
+
+  # take the difference of IDs in both frames
+  # missing blocks are IDs that should appear in the frame but dont.
+  missing_blocks <- array(setdiff(origins_frame$id, check_frame$fromId))
+  total_expected <- n + length(missing_blocks) * rows_per_dissemination_block
+  print(paste(glue('{n} of {total_expected} rows filled ({round((n/total_expected)*100, 2)}%)')))
+  print(paste(length(missing_blocks)*rows_per_dissemination_block, 'IDs to add'))
+
+  return(missing_blocks)
 }
 
 
