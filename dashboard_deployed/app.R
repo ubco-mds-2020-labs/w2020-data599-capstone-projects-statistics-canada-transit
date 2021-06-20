@@ -1,7 +1,6 @@
 library(shiny)
 library(glue)
 library(stringr)
-library(tippy)
 
 # for data table page
 library(DT)
@@ -70,20 +69,17 @@ ui <- shinyUI(
                                 absolutePanel(id = "controls", class = "panel panel-default",
                                             fixed = TRUE, draggable = TRUE,
                                             top = 60, left = "auto", right = 20, bottom = "auto",
-                                            width = 400, height = "auto",
+                                            width = 360, height = "auto",
                                             h2("Accessibility Explorer"),
-                                            h4("Selected map:"),
-                                            textOutput("scoreText"),
+                                            h4("Selected map score measure:"),
+                                            h5("Based on worst case scenario for  transit time (avg time / 2 SD). A higher score corresponds to a lower transit time"),
                                             h4(),
                                             selectInput(inputId = "type_sco", label = "Amenity Type", choices = amenity_factor),
-                                            tippy_this(elementId = "type_sco", tooltip = "Select Amenity to filter by"),
                                             selectInput(inputId = "weight", label =  "Amenity Weights", choices= weight_factor),
                                             selectInput(inputId = "nearest_n", label =  "Nearest n Amenities", choices = nearest_n_factor),
                                             selectInput(inputId = 'stop_sco', label = "Include Bus Stops", choices = stops)
                                             
                                             ),
-                                # citations
-                                # tags$div(id="cite", 'Data compiled for ', tags$em('Citation Here'), ' by Author (Publisher, Year).')
                             )),
                             tabPanel("3D Score Measures",
                             div(class="outer",
@@ -92,14 +88,12 @@ ui <- shinyUI(
                                 absolutePanel(id = "controls", class = "panel panel-default",
                                             fixed = TRUE, draggable = TRUE,
                                             top = 60, left = "auto", right = 20, bottom = "auto",
-                                            width = 330, height = "auto",
+                                            width = 360, height = "auto",
                                             h2("Accessibility Explorer"),
-                                            h4("Selected map:"),
-                                            textOutput("kepText"),
+                                            h4("Selected map score measure:"),
+                                            h5("3D map based on worst case scenario for  transit time (avg time / 2 SD). A higher score corresponds to a lower transit time"),
                                             h4(),
                                             selectInput(inputId = "type_kep", label = "Amenity Type", choices = amenity_factor)),
-                                # citations
-                                # tags$div(id="cite", 'Data compiled for ', tags$em('Citation Here'), ' by Author (Publisher, Year).')
                             )),
                             tabPanel("Isochrone Measures",
                             div(class="outer",
@@ -108,15 +102,13 @@ ui <- shinyUI(
                                 absolutePanel(id = "controls", class = "panel panel-default",
                                             fixed = TRUE, draggable = TRUE,
                                             top = 60, left = "auto", right = 20, bottom = "auto",
-                                            width = 400, height = "auto",
+                                            width = 360, height = "auto",
                                             h2("Accessibility Explorer"),
-                                            h4("Selected map:"),
-                                            textOutput("isoText"),
+                                            h4("Selected map score measure:"),
+                                            h5("Maximing time to get to the nearest amenity."),
                                             h4(),
                                             selectInput(inputId = "type_iso", label = "Amenity Type", choices = amenity_factor),
                                             selectInput(inputId = 'stop_iso', label = "Include Bus Stops", choices = stops)),
-                                # citations
-                                # tags$div(id="cite", 'Data compiled for ', tags$em('Citation Here'), ' by Author (Publisher, Year).')
                             )),
                             tabPanel("3D Time Window",
                             div(class="outer",
@@ -125,16 +117,13 @@ ui <- shinyUI(
                                 absolutePanel(id = "controls", class = "panel panel-default",
                                             fixed = TRUE, draggable = TRUE,
                                             top = 60, left = "auto", right = 20, bottom = "auto",
-                                            width = 330, height = "auto",
+                                            width = 360, height = "auto",
                                             h2("Accessibility Explorer"),
-                                            h4("Selected map:"),
-                                            textOutput("timeText"),
+                                            h4("Selected map score measure:"),
+                                            h5("3D map based on the maximing time to get to the nearest amenity."),
                                             h4(),
                                             selectInput(inputId = "type_kep_time", label = "Amenity Type", choices = amenity_factor),
                                             selectInput(inputId = "day_kep", label = "Day", choices = day_factor)),
-                                       
-                                # citations
-                                # tags$div(id="cite", 'Data compiled for ', tags$em('Citation Here'), ' by Author (Publisher, Year).')
                             )),
                             tabPanel("Comparison",
                             div(class="outer",
@@ -143,11 +132,12 @@ ui <- shinyUI(
                                 absolutePanel(id = "controls", class = "panel panel-default",
                                             fixed = TRUE, draggable = TRUE,
                                             top = 60, left = "auto", right = 20, bottom = "auto",
-                                            width = 330, height = "auto",
+                                            width = 360, height = "auto",
                                             h2("Accessibility Explorer"),
+                                            h4("Selected map score measure:"),
+                                            h5("3D map comparison based on worst case scenario for  transit time (avg time / 2 SD). A higher score corresponds to a lower transit time"),
+                                            h4(),
                                             selectInput(inputId = "type_com", label = "Amenity Type", choices = amenity_factor)),
-                                       # citations
-                                       # tags$div(id="cite", 'Data compiled for ', tags$em('Citation Here'), ' by Author (Publisher, Year).')
                                    )),
                             tabPanel("Network Efficiency",
                                     div(class="outer",
@@ -157,15 +147,13 @@ ui <- shinyUI(
                                         absolutePanel(id = "controls", class = "panel panel-default",
                                                     fixed = TRUE, draggable = TRUE,
                                                     top = 60, left = "auto", right = 20, bottom = "auto",
-                                                    width = 330, height = "auto",
+                                                    width = 360, height = "auto",
                                                     h2("Accessibility Explorer"),
-                                                    h4("Selected map:"),
-                                                    textOutput("effText"),
+                                                    h4("Selected map score measure:"),
+                                                    h5("Scores based on the difference between the accessibility and the transit needs"),
                                                     h4(),
                                                     selectInput(inputId = 'type_eff', label = "Efficiency Type", choices = efficiency_type),
                                                     selectInput(inputId = 'stop_eff', label = "Include Bus Stops", choices = stops)),
-                                        # citations
-                                        # tags$div(id="cite", 'Data compiled for ', tags$em('Citation Here'), ' by Author (Publisher, Year).')
                                     ))
                 ),
 
@@ -390,7 +378,6 @@ server <- function(input, output){
         nearest_n <- input$nearest_n
         stop <- input$stop_sco
         html_file <- glue("{amn_name} - wt({weight}) - n({nearest_n}) - stops({stop})")
-        output$scoreText <- renderText({html_file})
         return(glue('/{html_file}.html'))
     })
     
@@ -399,7 +386,6 @@ server <- function(input, output){
     getKepler_map <- reactive({ 
         amn_name <- input$type_kep
         html_file <-  glue('{amn_name} Score Kepler')
-        output$kepText <- renderText({html_file})
         return(glue('/{html_file}.html'))
     })
     
@@ -407,7 +393,6 @@ server <- function(input, output){
         amn_name <- input$type_iso
         stop <- input$stop_iso
         html_file <-  glue('{amn_name} - isochrone - stops({stop})')
-        output$isoText <- renderText({html_file})
         return(glue('/{html_file}.html'))
     })
     
@@ -415,7 +400,6 @@ server <- function(input, output){
         efficiency <- input$type_eff
         stop <- input$stop_eff
         html_file <-  glue('{efficiency} Efficiency - stops({stop})')
-        output$effText <- renderText({html_file})
         return(glue('/{html_file}.html'))
     })
 
@@ -423,7 +407,6 @@ server <- function(input, output){
         amn_name <- input$type_kep_time
         day <- input$day_kep
         html_file <-  glue('{amn_name} time {day}')
-        output$timeText <- renderText({html_file})
         return(glue('/{html_file}.html'))
     })
     
