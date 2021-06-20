@@ -13,10 +13,6 @@ library(ggplot2)
 # functions
 #source('functions.R')
 
-#  import data
-all_ams <- read.csv("datatable/all_data.csv")[,-1]  # ams = accessibility measures
-sumstat_df <- read_csv("datatable/summary_statistics_by_city.csv")[,-1]
-
 # for unpuervised learning page
 library(dplyr)
 library(cluster)
@@ -27,6 +23,14 @@ library(factoextra)
 # corr plot
 library("cowplot")
 library("corrplot")
+
+#  import data
+all_ams <- read.csv("datatable/all_data.csv")[,-c(1,2)]  # ams = accessibility measures
+sumstat_df <- read_csv("datatable/summary_statistics_by_city.csv")[,-1]
+df_pca <- read_csv("datatable/pca_data_1.csv")
+df_pca <- data.frame(column_to_rownames(df_pca, var = "NAME"))
+df.num <- df_pca%>%select(where(is.numeric),-avg_score)
+colnames(df.num) <- c("SCORE","POPULATION","AMENITY","BUS STOPS","BUS FREQ","INDEX","TRANSIT TIME")
 
 
 # Directory path
@@ -52,12 +56,6 @@ nearest_n_factor <- c('1', '2', '3', 'ALL')
 stops <- c('No', 'Yes')
 efficiency_type <- c('Continuous', 'Discrete')
 day_factor <- c('Friday', 'Saturday', 'Sunday')
-
-## PCA data
-df_pca<-read_csv("datatable/pca_data_1.csv")
-df_pca<-data.frame(column_to_rownames(df_pca, var = "NAME"))
-df.num<-df_pca%>%select(where(is.numeric),-avg_score)
-colnames(df.num)<-c("SCORE","POPULATION","AMENITY","BUS STOPS","BUS FREQ","INDEX","TRANSIT TIME")
 
 
 ui <- shinyUI(
@@ -131,7 +129,7 @@ ui <- shinyUI(
                             )),
                             tabPanel("Comparison",
                             div(class="outer",
-                                tags$head(includeCSS("styles.css"), includeScript("gomap.js")), # styles
+                                tags$head(includeCSS("styles/styles.css"), includeScript("styles/gomap.js")), # styles
                                 htmlOutput('kep_com'), # kepler.gl html map
                                 absolutePanel(id = "controls", class = "panel panel-default",
                                             fixed = TRUE, draggable = TRUE,
@@ -160,8 +158,7 @@ ui <- shinyUI(
                                                     selectInput(inputId = 'stop_eff', label = "Include Bus Stops", choices = stops)),
                                     ))
                 ),
-
-               tabPanel("Unsupervised Analysis",
+                tabPanel("Unsupervised Analysis",
                         tags$div(
                             sidebarPanel(
                                 #numericInput("npc", "Numer of Principal Components", 2),
@@ -173,58 +170,18 @@ ui <- shinyUI(
                             mainPanel(
                                 tabsetPanel(
                                     tabPanel("Scree Plot",
-                                             plotOutput("plot_scree")
-                                    ),
-                                    
+                                             plotOutput("plot_scree")),
                                     tabPanel("Correlation Plot",
-                                             plotOutput("plot_cor")
-                                    ),
+                                             plotOutput("plot_cor")),
                                     tabPanel(" Contributions Plot",
-                                             plotOutput("plot_con")
-                                    ),
+                                             plotOutput("plot_con")),
                                     tabPanel("Individual Plot",
-                                             plotOutput("plot_ind")
-                                    ),
+                                             plotOutput("plot_ind")),
                                     tabPanel("Biplot",
-                                             plotOutput("plot_bi")
-                                    ),
+                                             plotOutput("plot_bi")),
                                     tabPanel("Clustering",
-                                             plotOutput("plot_cluster")
-                                    )
-                                ),
-                            )
-                            
-                        )
-                        
-                        
-               ),                        tabPanel("Data Explorer",
-                                                  tabPanel("summary_statistics", DT::dataTableOutput("summary_table")),
-                                                  # Create a new Row in the UI for selectInputs
-                                                  fluidRow(
-                                                      column(4,
-                                                             selectInput("weights",
-                                                                         "Weights:",
-                                                                         choices=c("Yes"="yes","No"="no"),
-                                                                         selected = "yes")
-                                                      ),
-                                                      column(4,
-                                                             selectInput(inputId="nearest",
-                                                                         label="N Amennity",
-                                                                         choices=c("All Amenity"="avg_time_to_any_amenity",
-                                                                                   "Nearest Amenity"="time_to_nearest_amenity"),
-                                                                         selected = "All Amenity")
-                                                      ),
-                                                      tags$br(), 
-                                                      column(4,h4("Click the row to select data !"))
-                                                      
-                                                      
-                                                  ),
-                                                  
-                                                  
-                                                  plotOutput("plot_1", click = "plot_click")
-                                                  #plotOutput("plot_2",click = "plot_click"),
-                                                  
-               ),
+                                             plotOutput("plot_cluster"))
+               )))),
                
                tabPanel('About this Project',
                         tags$div(
@@ -412,6 +369,7 @@ server <- function(input, output){
                   axis.ticks.y = element_blank())
 
         ggarrange(score_plot, time_plot)
+    })
 
     #cor plot
     output$plot_cor<- renderPlot({
