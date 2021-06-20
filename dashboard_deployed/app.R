@@ -68,14 +68,18 @@ ui <- shinyUI(
                                     div(class="outer",
                                         tags$head(includeCSS("styles/styles.css"), includeScript("styles/gomap.js")), # styles
                                         htmlOutput('map_sco'), # leaflet html map
+                                        absolutePanel(id = "title", class = "panel panel-default",
+                                                      top = 20, left = 65, right = "auto", bottom = "auto",
+                                                      width = "auto", height = "auto",
+                                                      h2('Score Measure for Transit Accessibility to Cultural Amenities')),
+                                        
                                         absolutePanel(id = "controls", class = "panel panel-default",
                                                       fixed = TRUE, draggable = TRUE,
-                                                      top = 60, left = "auto", right = 20, bottom = "auto",
+                                                      top = 70, left = "auto", right = 20, bottom = "auto",
                                                       width = 360, height = "auto",
                                                       h2("Accessibility Explorer"),
-                                                      h4("Selected map score measure:"),
-                                                      h5("Based on worst case scenario for  transit time (avg time / 2 SD). A higher score corresponds to a lower transit time"),
-                                                      h4(),
+                                                      h5("Score measures are based on the worst case scenario trip time where worst case is to the average time + 2 standard deviations. A higher score corresponds to a lower transit time."),
+                                                      br(),
                                                       selectInput(inputId = "type_sco", label = "Amenity Type", choices = amenity_factor),
                                                       selectInput(inputId = "weight", label =  "Amenity Weights", choices= weight_factor),
                                                       selectInput(inputId = "nearest_n", label =  "Nearest n Amenities", choices = nearest_n_factor),
@@ -87,14 +91,18 @@ ui <- shinyUI(
                                     div(class="outer",
                                         tags$head(includeCSS("styles/styles.css"), includeScript("styles/gomap.js")), # styles
                                         htmlOutput('map_iso'), # get the map
+                                        absolutePanel(id = "title", class = "panel panel-default",
+                                                      top = 20, left = 65, right = "auto", bottom = "auto",
+                                                      width = "auto", height = "auto",
+                                                      h2('Isochrone Measure for Transit Accessibility to Cultural Amenities')),
+                                        
                                         absolutePanel(id = "controls", class = "panel panel-default",
                                                       fixed = TRUE, draggable = TRUE,
                                                       top = 60, left = "auto", right = 20, bottom = "auto",
                                                       width = 360, height = "auto",
                                                       h2("Accessibility Explorer"),
-                                                      h4("Selected map score measure:"),
-                                                      h5("Maximing time to get to the nearest amenity."),
-                                                      h4(),
+                                                      h5("Isochrones show the time required to reach the nearest amenity."),
+                                                      br(),
                                                       selectInput(inputId = "type_iso", label = "Amenity Type", choices = amenity_factor),
                                                       selectInput(inputId = 'stop_iso', label = "Include Bus Stops", choices = stops)),
                                     )),
@@ -102,15 +110,19 @@ ui <- shinyUI(
                                     div(class="outer",
                                         tags$head(includeCSS("styles/styles.css"), includeScript("styles/gomap.js")), # styles
                                         htmlOutput('map_eff'), # get the map
-                                        # options panel
+                                        absolutePanel(id = "title", class = "panel panel-default",
+                                                      top = 20, left = 65, right = "auto", bottom = "auto",
+                                                      width = "auto", height = "auto",
+                                                      h2('Network Efficiency for Transit Accessibility to Cultural Amenities')),
+                                        
                                         absolutePanel(id = "controls", class = "panel panel-default",
                                                       fixed = TRUE, draggable = TRUE,
                                                       top = 60, left = "auto", right = 20, bottom = "auto",
                                                       width = 360, height = "auto",
                                                       h2("Accessibility Explorer"),
-                                                      h4("Selected map score measure:"),
-                                                      h5("Scores based on the difference between the accessibility and the transit needs"),
-                                                      h4(),
+                                                      h5("Efficiency is based on the difference between the accessibility score and the transit needs.
+                                                         Transit needs depend on the population size, the local amenity density, and the average amount of traffic in a ~5km region."),
+                                                      br(),
                                                       selectInput(inputId = 'type_eff', label = "Efficiency Type", choices = efficiency_type),
                                                       selectInput(inputId = 'stop_eff', label = "Include Bus Stops", choices = stops)),
                                     ))
@@ -118,32 +130,41 @@ ui <- shinyUI(
 
                navbarMenu("Kepler Accessibility Visualizations",
                           "----",
-                          tabPanel("Kepler Score Measures",
+                          tabPanel("Score Measures",
                                    div(class="outer",
                                        tags$head(includeCSS("styles/styles.css"), includeScript("styles/gomap.js")), # styles
-                                       htmlOutput('map_kep'), # kepler.gl html map
+                                       htmlOutput('map_kep'),
+                                       absolutePanel(id = "title", class = "panel panel-default",
+                                                     top = 20, left = 65, right = "auto", bottom = "auto",
+                                                     width = "auto", height = "auto",
+                                                     h2('Score Measure for Transit Accessibility to Cultural Amenities')),
+                                       
                                        absolutePanel(id = "controls", class = "panel panel-default",
                                                      fixed = TRUE, draggable = TRUE,
                                                      top = 60, left = "auto", right = 20, bottom = "auto",
                                                      width = 360, height = "auto",
                                                      h2("Accessibility Explorer"),
-                                                     h4("Selected map score measure:"),
-                                                     h5("3D map based on worst case scenario for  transit time (avg time / 2 SD). A higher score corresponds to a lower transit time"),
-                                                     h4(),
+                                                     h5("Score measures are based on the worst case scenario trip time where worst case is to the average time + 2 standard deviations. A higher score corresponds to a lower transit time."),
+                                                     br(),
                                                      selectInput(inputId = "type_kep", label = "Amenity Type", choices = amenity_factor)),
                                    )),
-                          tabPanel("Comparison",
+                          tabPanel("Weekday/Weekend Score Comparison",
                                    div(class="outer",
                                        tags$head(includeCSS("styles/styles.css"), includeScript("styles/gomap.js")), # styles
-                                       htmlOutput('kep_com'), # kepler.gl html map
+                                       htmlOutput('kep_com'),
+                                       absolutePanel(id = "title", class = "panel panel-default",
+                                                     top = 20, left = 65, right = "auto", bottom = "auto",
+                                                     width = "auto", height = "auto",
+                                                     h2('Comparison Map for Weekend/Weekday Scores')),
+                                       
                                        absolutePanel(id = "controls", class = "panel panel-default",
                                                      fixed = TRUE, draggable = TRUE,
                                                      top = 60, left = "auto", right = 20, bottom = "auto",
                                                      width = 360, height = "auto",
                                                      h2("Accessibility Explorer"),
                                                      h4("Selected map score measure:"),
-                                                     h5("3D map comparison based on worst case scenario for  transit time (avg time / 2 SD). A higher score corresponds to a lower transit time"),
-                                                     h4(),
+                                                     h5("Score measures are based on the worst case scenario trip time where worst case is to the average time + 2 standard deviations. A higher score corresponds to a lower transit time."),
+                                                     br(),
                                                      selectInput(inputId = "type_com", label = "Amenity Type", choices = amenity_factor)),
                                    ))
                           
@@ -287,6 +308,7 @@ ui <- shinyUI(
                             "Faculty of Science,University of British Columbia",tags$br(),
                             tags$img(src = "logo.png", width = "550px", height = "200px")
                         ))
+               
     )
 )
 
@@ -298,6 +320,10 @@ ui <- shinyUI(
 #remove_modal_spinner()
 
 server <- function(input, output){
+    
+    output$current_map <- renderText({
+       'Map Title Here'
+    })
 
     # get html path
     getScore_map <- reactive({ 
