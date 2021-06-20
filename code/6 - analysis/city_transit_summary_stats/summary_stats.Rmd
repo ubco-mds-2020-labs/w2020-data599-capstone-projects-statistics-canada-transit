@@ -42,7 +42,7 @@ all_data <- left_join(all_data, TTM, by = c('id' = 'fromId'))
 # remove NAs
 #all_data$avg_score_to_nearest_amenity[is.na(all_data$avg_score_to_nearest_amenity)] <- 0.001
 
-all_data
+#write.csv(all_data,"all_data.csv")
 
 ```
 ## Overall Vancouver Transit Accessibility Distributions
