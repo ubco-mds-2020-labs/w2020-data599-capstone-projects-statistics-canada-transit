@@ -257,7 +257,7 @@ ui <- shinyUI(
                             
                             tags$br(),tags$br(),tags$h3("About the Project",style=" font-family:Papyrus, serif;"),
                             tags$h5("A High Performing, 
-                    Scalable Model forComputing and Visualizing Public Transit Accessibility,A Case Study on Cultural
+                    Scalable Model for Computing and Visualizing Public Transit Accessibility,A Case Study on Cultural
                     and Art Amenities in Metro Vancouver.",style="font-size:20px;font-style: italic; font-family:Times, serif;"),
                             
                             tags$br(),tags$h4("Introduction",style=" font-family:Papyrus, serif;"),
