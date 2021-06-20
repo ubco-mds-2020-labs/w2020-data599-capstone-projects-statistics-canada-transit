@@ -84,8 +84,7 @@ ui <- shinyUI(
                                                       selectInput(inputId = "nearest_n", label =  "Nearest n Amenities", choices = nearest_n_factor))
                                                       #selectInput(inputId = 'stop_sco', label = "Include Bus Stops", choices = stops)
                                                       
-                                        ),
-                                    )),
+                            )),
                            tabPanel("Isochrone Measures",
                                     div(class="outer",
                                         tags$head(includeCSS("styles/styles.css"), includeScript("styles/gomap.js")), # styles
@@ -97,14 +96,14 @@ ui <- shinyUI(
                                         
                                         absolutePanel(id = "controls", class = "panel panel-default",
                                                       fixed = TRUE, draggable = TRUE,
-                                                      top = 60, left = "auto", right = 20, bottom = "auto",
+                                                      top = 70, left = "auto", right = 20, bottom = "auto",
                                                       width = 360, height = "auto",
                                                       h2("Accessibility Explorer"),
                                                       h5("Isochrones show the time required to reach the nearest amenity."),
                                                       br(),
                                                       selectInput(inputId = "type_iso", label = "Amenity Type", choices = amenity_factor),
-                                                      selectInput(inputId = 'stop_iso', label = "Include Bus Stops", choices = stops)),
-                                    )),
+                                                      selectInput(inputId = 'stop_iso', label = "Include Bus Stops", choices = stops))
+                            )),
                            tabPanel("Network Efficiency",
                                     div(class="outer",
                                         tags$head(includeCSS("styles/styles.css"), includeScript("styles/gomap.js")), # styles
@@ -116,22 +115,22 @@ ui <- shinyUI(
                                         
                                         absolutePanel(id = "controls", class = "panel panel-default",
                                                       fixed = TRUE, draggable = TRUE,
-                                                      top = 60, left = "auto", right = 20, bottom = "auto",
+                                                      top = 70, left = "auto", right = 20, bottom = "auto",
                                                       width = 360, height = "auto",
                                                       h2("Accessibility Explorer"),
                                                       h5("Efficiency is based on the difference between the accessibility score and the transit needs.
                                                          Transit needs depend on the population size, the local amenity density, and the average amount of traffic in a ~5km region."),
                                                       br(),
                                                       selectInput(inputId = 'type_eff', label = "Efficiency Type", choices = efficiency_type),
-                                                      selectInput(inputId = 'stop_eff', label = "Include Bus Stops", choices = stops)),
+                                                      selectInput(inputId = 'stop_eff', label = "Include Bus Stops", choices = stops))
                                     ))
                 ),
 
-               navbarMenu("Kepler Accessibility Visualizations",
+               navbarMenu("Kepler (3D) Accessibility Visualizations",
                           "----",
                           tabPanel("Score Percentile Measures",
                                    div(class="outer",
-                                       tags$head(includeCSS("styles/styles.css"), includeScript("styles/gomap.js")), # styles
+                                       tags$head(includeCSS("styles/styles.css"), includeScript("styles/gomap.js")),
                                        htmlOutput('map_kep'),
                                        absolutePanel(id = "title", class = "panel panel-default",
                                                      top = 20, left = 65, right = "auto", bottom = "auto",
@@ -140,14 +139,14 @@ ui <- shinyUI(
                                        
                                        absolutePanel(id = "controls", class = "panel panel-default",
                                                      fixed = TRUE, draggable = TRUE,
-                                                     top = 60, left = "auto", right = 20, bottom = "auto",
+                                                     top = 70, left = "auto", right = 20, bottom = "auto",
                                                      width = 360, height = "auto",
                                                      h2("Accessibility Explorer"),
                                                      h5("Score measures are based on the worst case scenario trip time where worst case is to the average time + 2 standard deviations. A higher score corresponds to a lower transit time, although the percentile is take to render it more interprettable."),
                                                      br(),
-                                                     selectInput(inputId = "type_kep", label = "Amenity Type", choices = amenity_factor)),
+                                                     selectInput(inputId = "type_kep", label = "Amenity Type", choices = amenity_factor))
                                    )),
-                          tabPanel("Weekday/Weekend Score Percentile Comparison",
+                          tabPanel("Weekday/Weekend Isochrone Comparison",
                                    div(class="outer",
                                        tags$head(includeCSS("styles/styles.css"), includeScript("styles/gomap.js")), # styles
                                        htmlOutput('kep_com'),
@@ -158,30 +157,27 @@ ui <- shinyUI(
                                        
                                        absolutePanel(id = "controls", class = "panel panel-default",
                                                      fixed = TRUE, draggable = TRUE,
+                                                     top = 70, left = "auto", right = 20, bottom = "auto",
+                                                     width = 360, height = "auto",
+                                                     h2("Accessibility Explorer"),
+                                                     h5("Isochrones show the time required to reach the nearest amenity."),
+                                                     br(),
+                                                     selectInput(inputId = "type_com", label = "Amenity Type", choices = amenity_factor))
+                                   )),
+                          tabPanel("Time of Day Isochrone Comparison",
+                                   div(class="outer",
+                                       tags$head(includeCSS("styles/styles.css"), includeScript("styles/gomap.js")),# styles
+                                       htmlOutput('keplertime'),
+                                       absolutePanel(id = "controls", class = "panel panel-default",
+                                                     fixed = TRUE, draggable = TRUE,
                                                      top = 60, left = "auto", right = 20, bottom = "auto",
                                                      width = 360, height = "auto",
                                                      h2("Accessibility Explorer"),
-                                                     h4("Selected map score measure:"),
-                                                     h5("Score measures are based on the worst case scenario trip time where worst case is to the average time + 2 standard deviations. A higher score corresponds to a lower transit time."),
+                                                     h5("Isochrones show the time required to reach the nearest amenity."),
                                                      br(),
-                                                     selectInput(inputId = "type_com", label = "Amenity Type", choices = amenity_factor)),
-                                   ))
-                          
-                          #tabPanel("3D Time Window",
-                          #div(class="outer",
-                          #    tags$head(includeCSS("styles/styles.css"), includeScript("styles/gomap.js")),# styles
-                          #    htmlOutput('keplertime'),
-                          #    absolutePanel(id = "controls", class = "panel panel-default",
-                          #                fixed = TRUE, draggable = TRUE,
-                          #                top = 60, left = "auto", right = 20, bottom = "auto",
-                          #                width = 360, height = "auto",
-                          #                h2("Accessibility Explorer"),
-                          #                h4("Selected map score measure:"),
-                          #                h5("3D map based on the maximing time to get to the nearest amenity."),
-                          #                h4(),
-                          #                selectInput(inputId = "type_kep_time", label = "Amenity Type", choices = amenity_factor),
-                          #                selectInput(inputId = "day_kep", label = "Day", choices = day_factor)),
-                          #))
+                                                     selectInput(inputId = "type_kep_time", label = "Amenity Type", choices = amenity_factor)
+                                       ))
+                          )
                           
                ),
                tabPanel("Unsupervised Analysis",
@@ -190,7 +186,7 @@ ui <- shinyUI(
                                 selectInput("var","Select Variables:",
                                             choices = colnames(df.num),
                                             multiple = T,
-                                            selected=colnames(df.num)),
+                                            selected=colnames(df.num))
                             ),
                             mainPanel(
                                 tabsetPanel(
@@ -306,8 +302,8 @@ ui <- shinyUI(
                             "Computer Science and Statistics",tags$br(),
                             "Faculty of Science,University of British Columbia",tags$br(),
                             tags$img(src = "logo.png", width = "550px", height = "200px")
-                        ))
-               
+                        )
+               )
     )
 )
 
@@ -331,8 +327,8 @@ server <- function(input, output){
         amn_name <- input$type_sco
         weight <- str_to_lower(input$weight)
         nearest_n <- input$nearest_n
-        stop <- input$stop_sco
-        html_file <- glue("{amn_name} - wt({weight}) - n({nearest_n}) - stops({stop})")
+        #stop <- input$stop_sco
+        html_file <- glue("{amn_name} - wt({weight}) - n({nearest_n}) - stops(yes)")
         return(glue('/{html_file}.html'))
     })
     
@@ -360,8 +356,8 @@ server <- function(input, output){
 
     getKepler_time <- reactive({ 
         amn_name <- input$type_kep_time
-        day <- input$day_kep
-        html_file <-  glue('{amn_name} time {day}')
+        #day <- input$day_kep
+        html_file <-  glue('{amn_name} time Friday')
         return(glue('/{html_file}.html'))
     })
     
