@@ -77,7 +77,7 @@ ui <- shinyUI(
                                                       top = 70, left = "auto", right = 20, bottom = "auto",
                                                       width = 360, height = "auto",
                                                       h2("Accessibility Explorer"),
-                                                      h5("Score measures are based on the worst case scenario trip time where worst case is to the average time + 2 standard deviations. A higher score corresponds to a lower transit time, although the percentile is take to render it more interprettable."),
+                                                      h5("Score measures are based on the worst case scenario trip time where worst case is to the average time + 2 standard deviations. A higher score corresponds to a lower transit time, although the percentile is taken to render it more interprettable."),
                                                       br(),
                                                       selectInput(inputId = "type_sco", label = "Amenity Type", choices = amenity_factor),
                                                       selectInput(inputId = "weight", label =  "Amenity Weights", choices= weight_factor),
@@ -142,7 +142,7 @@ ui <- shinyUI(
                                                      top = 70, left = "auto", right = 20, bottom = "auto",
                                                      width = 360, height = "auto",
                                                      h2("Accessibility Explorer"),
-                                                     h5("Score measures are based on the worst case scenario trip time where worst case is to the average time + 2 standard deviations. A higher score corresponds to a lower transit time, although the percentile is take to render it more interprettable."),
+                                                     h5("Score measures are based on the worst case scenario trip time where worst case is to the average time + 2 standard deviations. A higher score corresponds to a lower transit time, although the percentile is taken to render it more interprettable."),
                                                      br(),
                                                      selectInput(inputId = "type_kep", label = "Amenity Type", choices = amenity_factor))
                                    )),
