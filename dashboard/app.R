@@ -10,16 +10,19 @@ library(ggplot2)
 amenity_factor <- c("Library or Archives", "Gallery", "Museum", "Theatre and Concert Hall")
 weight_factor <- c('No', 'Yes')
 nearest_n_factor <- c('1', '2', '3', 'ALL')
+day_factor <- c('Friday', 'Saturday', 'Sunday')
 
 # Directory path
 isomap_dir <- "/isochrone_maps"
 kepmap_dir <- "/kepler_maps"
 scoremap_dir <- "/score_maps"
 effmap_dir <- "/efficiency_maps"
+keptime_dir <- "/kepler_time"
 addResourcePath('isomaps', paste0(getwd(), isomap_dir)) # 'isomaps' is the name of the resource
 addResourcePath('kepmap', paste0(getwd(), kepmap_dir)) # 'kepmap' is the name of the resource
 addResourcePath('maps', paste0(getwd(), scoremap_dir)) # 'maps' is the name of the resource
 addResourcePath('effmap', paste0(getwd(), effmap_dir)) # 'effmap' is the name of the resource
+addResourcePath('keptime', paste0(getwd(), keptime_dir)) # 'keptime' is the name of the resource
 
 #  import data
 all_df = read.csv("datatable/all_data.csv")
@@ -91,6 +94,29 @@ ui <- shinyUI(
                                           width = 330, height = "auto",
                                           h2("Accessibility Explorer"),
                                           selectInput(inputId = "type_iso", label = "Amenity Type", choices = amenity_factor)),
+                            
+                            # citations
+                            # tags$div(id="cite", 'Data compiled for ', tags$em('Citation Here'), ' by Author (Publisher, Year).')
+                        )
+               ),
+               
+               tabPanel("Kepler.gl Time Window",
+                        div(class="outer",
+                            
+                            # styles
+                            tags$head(includeCSS("styles.css"), includeScript("gomap.js")),
+                            
+                            # kepler.gl html map
+                            htmlOutput('keplertime'),
+                            
+                            # options panel
+                            absolutePanel(id = "controls", class = "panel panel-default",
+                                          fixed = TRUE, draggable = TRUE,
+                                          top = 60, left = "auto", right = 20, bottom = "auto",
+                                          width = 330, height = "auto",
+                                          h2("Accessibility Explorer"),
+                                          selectInput(inputId = "type_kep", label = "Amenity Type", choices = amenity_factor),
+                                          selectInput(inputId = "day_kep", label = "Day", choices = day_factor)),
                             
                             # citations
                             # tags$div(id="cite", 'Data compiled for ', tags$em('Citation Here'), ' by Author (Publisher, Year).')
@@ -268,6 +294,13 @@ server <- function(input, output){
         return(glue('/{html_file}.html'))
     })
     
+    getPage_keptime <- reactive({ 
+        amn_name <- input$type_kep
+        day <- input$day_kep
+        html_file <-  glue('{amn_name} time {day}')
+        return(glue('/{html_file}.html'))
+    })
+    
     # dynamic file calling
     output$map <- renderUI({
         tags$iframe(seamless="seamless", src=paste0('maps', getPage()),
@@ -295,6 +328,14 @@ server <- function(input, output){
     # dynamic file calling efficiency map
     output$map_eff <- renderUI({
         tags$iframe(seamless="seamless", src=paste0('effmap', getPage_eff()),
+                    style="position: absolute; top: 0; right: 0; bottom: 0: left: 0;",
+                    width='100%',
+                    height='100%') # dynamic height (100%) doesn't work so I set it manually
+    })
+    
+    # dynamic file calling kepler time window map
+    output$keplertime <- renderUI({
+        tags$iframe(seamless="seamless", src=paste0('keptime', getPage_keptime()),
                     style="position: absolute; top: 0; right: 0; bottom: 0: left: 0;",
                     width='100%',
                     height='100%') # dynamic height (100%) doesn't work so I set it manually
