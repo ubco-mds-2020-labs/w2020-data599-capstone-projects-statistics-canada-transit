@@ -24,6 +24,7 @@ kepmap_dir <- "/maps/kepler_maps/general"
 isomap_dir <- "/maps/isochrone_maps"
 effmap_dir <- "/maps/efficiency_maps"
 kepmap_dir_time_window <- "/maps/kepler_maps/time_window"
+compare_dir <- "/maps/kepler_maps/compare"
 
 # Add resource paths, with specific resource names
 addResourcePath('map_sco', paste0(getwd(), scoremap_dir))
@@ -31,6 +32,7 @@ addResourcePath('map_kep', paste0(getwd(), kepmap_dir))
 addResourcePath('map_iso', paste0(getwd(), isomap_dir)) 
 addResourcePath('map_eff', paste0(getwd(), effmap_dir)) 
 addResourcePath('kep_time', paste0(getwd(), kepmap_dir_time_window))
+addResourcePath('kep_com', paste0(getwd(), compare_dir))
 
 # Factor vector names
 amenity_factor <- c("Library or Archives", "Gallery", "Museum", "Theatre and Concert Hall")
@@ -99,7 +101,7 @@ ui <- shinyUI(
                                 # citations
                                 # tags$div(id="cite", 'Data compiled for ', tags$em('Citation Here'), ' by Author (Publisher, Year).')
                             )),
-                            tabPanel("3D Time Window Comparison",
+                            tabPanel("3D Time Window",
                             div(class="outer",
                                 tags$head(includeCSS("styles.css"), includeScript("gomap.js")),# styles
                                 htmlOutput('keplertime'),
@@ -113,6 +115,19 @@ ui <- shinyUI(
                                        
                                 # citations
                                 # tags$div(id="cite", 'Data compiled for ', tags$em('Citation Here'), ' by Author (Publisher, Year).')
+                            )),
+                            tabPanel("Comparison",
+                            div(class="outer",
+                                tags$head(includeCSS("styles.css"), includeScript("gomap.js")), # styles
+                                htmlOutput('kep_com'), # kepler.gl html map
+                                absolutePanel(id = "controls", class = "panel panel-default",
+                                            fixed = TRUE, draggable = TRUE,
+                                            top = 60, left = "auto", right = 20, bottom = "auto",
+                                            width = 330, height = "auto",
+                                            h2("Accessibility Explorer"),
+                                            selectInput(inputId = "type_com", label = "Amenity Type", choices = amenity_factor)),
+                                       # citations
+                                       # tags$div(id="cite", 'Data compiled for ', tags$em('Citation Here'), ' by Author (Publisher, Year).')
                                    )),
                             tabPanel("Network Efficiency",
                                     div(class="outer",
@@ -439,6 +454,12 @@ server <- function(input, output){
         html_file <-  glue('{amn_name} time {day}')
         return(glue('/{html_file}.html'))
     })
+    
+    getKepler_com <- reactive({ 
+        amn_name <- input$type_com
+        html_file <-  glue('{amn_name} compare')
+        return(glue('/{html_file}.html'))
+    })
 
     # this is where the resource path names are used
     # dynamic file calling
@@ -476,6 +497,13 @@ server <- function(input, output){
     # dynamic file calling kepler time window map
     output$keplertime <- renderUI({
         tags$iframe(seamless="seamless", src=paste0('kep_time', getKepler_time()),
+                    style="position: absolute; top: 0; right: 0; bottom: 0: left: 0;",
+                    width='100%',
+                    height='100%') # dynamic height (100%) doesn't work so I set it manually
+    })
+    
+    output$kep_com <- renderUI({
+        tags$iframe(seamless="seamless", src=paste0('kep_com', getKepler_com()),
                     style="position: absolute; top: 0; right: 0; bottom: 0: left: 0;",
                     width='100%',
                     height='100%') # dynamic height (100%) doesn't work so I set it manually
