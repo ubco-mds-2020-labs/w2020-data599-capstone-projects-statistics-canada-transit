@@ -1,4 +1,5 @@
 library(shiny)
+library(shinybusy)
 library(glue)
 library(stringr)
 
@@ -8,6 +9,14 @@ library(ggpubr)
 library(tidyverse)
 library(readr)
 library(ggplot2)
+
+# functions
+#source('functions.R')
+
+
+#  import data
+all_ams <- read.csv("datatable/all_data.csv")[,-1]  # ams = accessibility measures
+sumstat_df <- read_csv("datatable/summary_statistics_by_city.csv")[,-1]
 
 # Directory path
 scoremap_dir <- "/maps/score_maps"
@@ -31,20 +40,18 @@ stops <- c('No', 'Yes')
 efficiency_type <- c('Continuous', 'Discrete')
 day_factor <- c('Friday', 'Saturday', 'Sunday')
 
-#  import data
-all_df <- read.csv("datatable/all_data.csv")[,-1] 
-sumstat_df <- read_csv("datatable/summary_statistics_by_city.csv")[,-1]
 
 
 ui <- shinyUI(
+   # add_busy_spinner(spin = "fading-circle"),
     navbarPage("Vancouver Transit Accessibility to Cultural Amenities",
 
                 navbarMenu("Accessibility Measure Visualizations",
                           "----",
                             tabPanel("Score Measures", 
                             div(class="outer",
-                                tags$head(includeCSS("styles.css"), includeScript("gomap.js")), # styles
-                                htmlOutput('map_sco'), # leaflet html map
+                                tags$head(includeCSS("styles/styles.css"), includeScript("styles/gomap.js")), # styles
+                               htmlOutput('map_sco'), # leaflet html map
                                 absolutePanel(id = "controls", class = "panel panel-default",
                                             fixed = TRUE, draggable = TRUE,
                                             top = 60, left = "auto", right = 20, bottom = "auto",
@@ -59,7 +66,7 @@ ui <- shinyUI(
                             )),
                             tabPanel("3D Score Measures",
                             div(class="outer",
-                                tags$head(includeCSS("styles.css"), includeScript("gomap.js")), # styles
+                                tags$head(includeCSS("styles/styles.css"), includeScript("styles/gomap.js")), # styles
                                 htmlOutput('map_kep'), # kepler.gl html map
                                 absolutePanel(id = "controls", class = "panel panel-default",
                                             fixed = TRUE, draggable = TRUE,
@@ -72,7 +79,7 @@ ui <- shinyUI(
                             )),
                             tabPanel("Isochrone Measures",
                             div(class="outer",
-                                tags$head(includeCSS("styles.css"), includeScript("gomap.js")), # styles
+                                tags$head(includeCSS("styles/styles.css"), includeScript("styles/gomap.js")), # styles
                                 htmlOutput('map_iso'), # get the map
                                 absolutePanel(id = "controls", class = "panel panel-default",
                                             fixed = TRUE, draggable = TRUE,
@@ -86,7 +93,7 @@ ui <- shinyUI(
                             )),
                             tabPanel("3D Time Window Comparison",
                             div(class="outer",
-                                tags$head(includeCSS("styles.css"), includeScript("gomap.js")),# styles
+                                tags$head(includeCSS("styles/styles.css"), includeScript("styles/gomap.js")),# styles
                                 htmlOutput('keplertime'),
                                 absolutePanel(id = "controls", class = "panel panel-default",
                                             fixed = TRUE, draggable = TRUE,
@@ -101,7 +108,7 @@ ui <- shinyUI(
                                    )),
                             tabPanel("Network Efficiency",
                                     div(class="outer",
-                                        tags$head(includeCSS("styles.css"), includeScript("gomap.js")), # styles
+                                        tags$head(includeCSS("styles/styles.css"), includeScript("styles/gomap.js")), # styles
                                         htmlOutput('map_eff'), # get the map
                                         # options panel
                                         absolutePanel(id = "controls", class = "panel panel-default",
@@ -203,23 +210,28 @@ ui <- shinyUI(
                                     selectInput("weights",
                                                 "Weights:",
                                                 choices=c("Yes"="yes","No"="no"),
-                                                selected = "yes")
+                                                selected = "Yes")
                             ),
                             column(4,
                                     selectInput(inputId="nearest",
-                                                label="N Amennity",
-                                                choices=c("All Amenity"="avg_time_to_any_amenity",
-                                                    "Nearest Amenity"="time_to_nearest_amenity"),
-                                                selected = "All Amenity")
+                                                label="Access to:",
+                                                choices=c("All Amenities" = "avg_time_to_any_amenity",
+                                                          "Nearest Amenity" = "time_to_nearest_amenity"),
+                                                selected = "All Amenities")
                             )
                         ),
-                        plotOutput("plot_1", click = "plot_click"),
+                        plotOutput("subdivision_violin_plot", click = "plot_click")
                )
     )
 )
 
+# show_modal_spinner(
+#spin = "cube-grid",
+#color = "firebrick",
+#text = "Please wait..."
+#)
+#remove_modal_spinner()
 
-    
 server <- function(input, output){
     
     # select the data table 
@@ -228,25 +240,27 @@ server <- function(input, output){
     })
 
     # plot based on the selected row shows that  total dissemination blocks
-    output$plot_1 <- renderPlot({
+    output$subdivision_violin_plot <- renderPlot({
+        
+        # user selected row indexing
+        rows_selected = input$summary_table_rows_selected
 
-        s = input$summary_table_rows_selected
-        sumstat_df <- sumstat_df[s,]
-        cities_to_keep <- sumstat_df$subdiv
-
-        # filter rows on these cities
-        all_data_small <- all_df %>% filter(subdiv %in% cities_to_keep)
+        # keep subdivisions in selected rows
+        cities_to_keep <- sumstat_df[rows_selected, 1]$subdiv
+        filtered_ams <- all_ams %>%
+            filter(subdiv %in% cities_to_keep & weight == input$weights)
         
         # ordered legend 
-        legend_ord <- levels(with(all_data_small, reorder(factor(subdiv), -avg_score_to_nearest_amenity, na.rm = TRUE)))
+        legend_ord_score <- levels(with(filtered_ams,
+                                        reorder(factor(subdiv), -avg_score_to_nearest_amenity, na.rm = TRUE)))
         
-        p2 <- all_data_small %>% filter(weight == input$weights) %>%
-            ggplot(aes(y =reorder(factor(subdiv), avg_score_to_nearest_amenity, na.rm = TRUE),
+        score_plot <- filtered_ams %>% 
+            ggplot(aes(y = reorder(factor(subdiv), avg_score_to_nearest_amenity, na.rm = TRUE),
                        x = avg_score_to_nearest_amenity)) +
             geom_violin(aes(fill = subdiv), scale = 'width', alpha = 0.4, draw_quantiles = c(0.5), size = 0.5) + 
-            scale_fill_discrete(breaks=legend_ord) +
+            scale_fill_discrete(breaks = legend_ord_score) +
             scale_x_continuous("Average Accessibility Score",limits = c(0, 0.3), breaks=c(0,0.1,0.2,0.3)) +
-            guides(fill=guide_legend(title= 'Subdivision')) +
+            guides(fill= guide_legend(title = 'Subdivision')) +
             theme_minimal() +
             theme(aspect.ratio = 1,
                   text = element_text(size=20),
@@ -256,18 +270,22 @@ server <- function(input, output){
                   axis.title.y = element_blank(),
                   axis.text.y = element_blank(),
                   axis.ticks.y = element_blank()) 
+        
+        
+        # change selected column name so it can be called as object in ggplot
+        sub <- filtered_ams %>% select(subdiv, input$nearest)
+        names(sub)[names(sub) == input$nearest] <- "selected_column"
 
-        # filter rows on specific subdiv and nearest_n
-        sub <- all_data_small %>% select(subdiv, input$nearest)
-        names(sub)[names(sub) == input$nearest] <- "amn"
-        legend_ord <- levels(with(sub, reorder(factor(subdiv), amn, na.rm = TRUE)))
+        legend_ord_time <- levels(with(sub,
+                                       reorder(factor(subdiv), selected_column, na.rm = TRUE)))
 
-        p3 <- sub %>%
-            ggplot(aes(y =reorder(factor(subdiv),amn, na.rm = TRUE), x = (amn)))+
+        time_plot <- sub %>%
+            ggplot(aes(y = reorder(factor(subdiv), -selected_column, na.rm = TRUE), 
+                       x = selected_column)) +
             geom_violin(aes(fill = subdiv), scale = 'width', alpha = 0.4, draw_quantiles = c(0.5), size = 0.5) +
-            scale_fill_discrete(breaks=legend_ord) +
+            scale_fill_discrete(breaks = legend_ord_time) +
             scale_x_continuous("Average Time in Minutes") +
-            guides(fill=guide_legend(title= 'Subdivision')) +
+            guides(fill = guide_legend(title = 'Subdivision')) +
             theme_minimal() +
             theme(aspect.ratio = 1,
                   text = element_text(size=20),
@@ -278,11 +296,13 @@ server <- function(input, output){
                   axis.text.y = element_blank(),
                   axis.ticks.y = element_blank())
 
-        ggarrange(p2, p3)
+        ggarrange(score_plot, time_plot)
     })
 
     # get html path
     getScore_map <- reactive({ 
+        #show_modal_spinner() # show the modal window
+        #remove_modal_spinner() # show the modal window
         amn_name <- input$type_sco
         weight <- str_to_lower(input$weight)
         nearest_n <- input$nearest_n
@@ -323,41 +343,37 @@ server <- function(input, output){
     output$map_sco <- renderUI({
         tags$iframe(seamless="seamless", src=paste0('map_sco', getScore_map()),
                     style="position: absolute; top: 0; right: 0; bottom: 0: left: 0;",
-                    width='100%',
-                    height='100%') # dynamic height (100%) doesn't work so I set it manually
+                    width='100%', height='100%')
     })
     
     # dynamic file calling kepler map
     output$map_kep <- renderUI({
         tags$iframe(seamless="seamless", src=paste0('map_kep', getKepler_map()),
                     style="position: absolute; top: 0; right: 0; bottom: 0: left: 0;",
-                    width='100%',
-                    height='100%') # dynamic height (100%) doesn't work so I set it manually
+                    width='100%', height='100%')
     })
     
     # dynamic file calling isochrone map
     output$map_iso <- renderUI({
         tags$iframe(seamless="seamless", src=paste0('map_iso', getIsochrone_map()),
                     style="position: absolute; top: 0; right: 0; bottom: 0: left: 0;",
-                    width='100%',
-                    height='100%') # dynamic height (100%) doesn't work so I set it manually
+                    width='100%', height='100%')
     })
     
     # dynamic file calling efficiency map
     output$map_eff <- renderUI({
         tags$iframe(seamless="seamless", src=paste0('map_eff', getEfficiency_map()),
                     style="position: absolute; top: 0; right: 0; bottom: 0: left: 0;",
-                    width='100%',
-                    height='100%') # dynamic height (100%) doesn't work so I set it manually
+                    width='100%', height='100%') 
     })
 
     # dynamic file calling kepler time window map
     output$keplertime <- renderUI({
         tags$iframe(seamless="seamless", src=paste0('kep_time', getKepler_time()),
                     style="position: absolute; top: 0; right: 0; bottom: 0: left: 0;",
-                    width='100%',
-                    height='100%') # dynamic height (100%) doesn't work so I set it manually
+                    width='100%', height='100%')
     })
+    
 }
     
 shinyApp(ui, server)

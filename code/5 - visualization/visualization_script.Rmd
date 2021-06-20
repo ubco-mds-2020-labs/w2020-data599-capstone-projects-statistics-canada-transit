@@ -171,20 +171,13 @@ bus_levels <- c(TRUE, FALSE)
 
 # Custom for loop for specific map outputting
 # Rendering dozens of maps can take a long time (10-20 minutes)
+
+# 32 score maps
 for (amenity in amenities) { 
   for (add_stop in bus_levels) {
-    
-    # 4 isochrone maps
-    map_maker_isochrone(data = isochr_viz_frame,
-                        bus_data = station_locs,
-                        amenity = amenity,
-                        add_stop = add_stop,
-                        output_dir = paste0(mappath, '/isochrone_maps'))
-  
     for (wt in weights) {
       for (n in nearest_n) {
         
-        # 32 score maps
         map_maker_scores(data = scores_viz_frame,
                          bus_data = station_locs,
                          amenity = amenity,
@@ -196,9 +189,11 @@ for (amenity in amenities) {
     }
   }
 }
+
+# 8 isochrone maps
 for (amenity in amenities) { 
   for (add_stop in bus_levels) {
-    # 4 isochrone maps
+    
     map_maker_isochrone(data = isochr_viz_frame,
                         bus_data = station_locs,
                         amenity = amenity,
@@ -206,10 +201,10 @@ for (amenity in amenities) {
                         output_dir = paste0(mappath, '/isochrone_maps'))
   }
 }
-
+  
+# 4 efficiency maps
 for (add_stop in bus_levels) { 
   
-  # 2 efficiency maps
   map_maker_efficiency_cont(efficiency_frame_viz, 
                             bus_data = station_locs,
                             add_stop = add_stop,

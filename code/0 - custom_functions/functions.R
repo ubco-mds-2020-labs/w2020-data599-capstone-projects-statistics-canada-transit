@@ -359,8 +359,8 @@ map_maker_isochrone <- function(data, bus_data, amenity, add_stop, output_dir, v
     levels = sort(unique(polyg_subset$time_groups))
   )
   
-  p_popup <- paste0("Max Time: <strong>", time_groups, " minutes</strong>",
-                    "<br>Nearest: ", amn_name, 
+  p_popup <- paste0("<h3>Max Time: <strong>", time_groups, " minutes</strong></h3>",
+                    "To the nearest: ", amn_name, 
                     "<br><br>Block Population: ", polyg_subset$pop,
                     "<br>Block ID: ", polyg_subset$DBUID)
   
