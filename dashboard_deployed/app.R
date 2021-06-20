@@ -182,6 +182,7 @@ ui <- shinyUI(
                ),
                tabPanel("Unsupervised Analysis",
                         tags$div(
+                     
                             sidebarPanel(
                                 selectInput("var","Select Variables:",
                                             choices = colnames(df.num),
@@ -226,14 +227,16 @@ ui <- shinyUI(
                         plotOutput("subdivision_violin_plot", click = "plot_click")
                ),
                tabPanel('About this Project',
-                        tags$div(
-                            tags$h2("Welcome!"),
-                            "The dashboard serves as a supplement tool  
+                        tags$div(style="margin: auto;padding-right: 80px;padding-left: 60px;",
+                                 tags$img(src = "headerlogo.png", style="max-width:100%;max-height:80%;"),
+                            tags$h2("Welcome!",style=" font-family:Papyrus, serif;"),
+                            
+                            tags$text("The dashboard serves as a supplement tool  
                     for our main project, A High Performing, 
                     Scalable Model forComputing and Visualizing Public Transit Accessibility,A Case Study on Cultural
-                    and Art Amenities in Metro Vancouver.",
-                            tags$br(),tags$br(),tags$h3("About the Dashbboard"),
-                            "This dashboard is used to visualize transit network accessibility
+                    and Art Amenities in Metro Vancouver.",style="font-size:20px"),
+                            tags$br(),tags$br(),tags$h3("About the Dashboard",style=" font-family:Papyrus, serif;"),
+                            tags$text("This dashboard is used to visualize transit network accessibility
                     in the Greater Vancouver area.
                     The main four tabs are Scores , Kepler.gl  ,Isochrones , Network Efficiency, 
                     the main purpose for those 4 tabs is to visualize  the transit accessibility 
@@ -250,57 +253,58 @@ ui <- shinyUI(
                     he Kepler.gl is designed for visualizing large -scale geolocation data,
                     which  has been built on top of Mapbox and deck.gl, we integrate the kepler.gl
                     in our dashboard to compare the changes of transit time from each block 
-                    to the nearest animenty of  selected.",
+                    to the nearest animenty of  selected.",style="font-size:20px"),
                             
-                            tags$br(),tags$br(),tags$h3("About the Project"),
+                            tags$br(),tags$br(),tags$h3("About the Project",style=" font-family:Papyrus, serif;"),
                             tags$h5("A High Performing, 
-                    Scalable Model forComputing and Visualizing Public Transit Accessibility,A Case Study on Cultural
-                    and Art Amenities in Metro Vancouver."),
-                            tags$br(),tags$h4("Introduction"),
-                            "Transportation network analysis is fundamental to urban planning 
+                    Scalable Model for Computing and Visualizing Public Transit Accessibility,A Case Study on Cultural
+                    and Art Amenities in Metro Vancouver.",style="font-size:20px;font-style: italic; font-family:Times, serif;"),
+                            
+                            tags$br(),tags$h4("Introduction",style=" font-family:Papyrus, serif;"),
+                            tags$text("Transportation network analysis is fundamental to urban planning 
                     for it determines how resources are distributed across a population. 
                     Resources come in the form of amenities such as grocery stores, schools,
                     parks, and hospitals. Our client, Statistics Canada produces data to better 
-                    understand Canadaâs population, resources, economy, society, and culture.
+                    understand Canada's population, resources, economy, society, and culture.
                     They have previously developed network accessibility measures based on distance 
-                    of driving, and walking to compute proximity scores for various types of amenities.",
+                    of driving, and walking to compute proximity scores for various types of amenities.",style="font-size:20px;"),
                             
-                            tags$br(),tags$h4("Problem"),
-                            "Accessibility measures based on time using transit have not yet been
+                            tags$br(),tags$h4("Problem",style=" font-family:Papyrus, serif;"),
+                            tags$text("Accessibility measures based on time using transit have not yet been
                     incorporated into proximity scores due to its multi-modal complexity 
                     and computational intensity. In 2016, 22.3% of Canadians depended on 
                     public transit in large cities; thus, incorporating transit accessibility
                     measures is paramount to not under-represent large segments of the population 
-                    which can inevitably worsen pre-existing inequalities in the urban landscape.",
+                    which can inevitably worsen pre-existing inequalities in the urban landscape.",style="font-size:20px"),
                             
-                            tags$br(),tags$br(),tags$h4("Object"),
-                            "The aim of this project was to establish a first iteration of an open source 
+                            tags$br(),tags$br(),tags$h4("Object",style=" font-family:Papyrus, serif;"),
+                            tags$text("The aim of this project was to establish a first iteration of an open source 
                     scalable framework for data collection and analysis of transit accessibility measures. 
                     We validated our framework on Vancouver, raising the question of, 
-                    âHow accessible are Vancouverâs cultural amenities (libraries, museums, 
-                    art galleries, and theatres) using the current transit system?â",
+                    How accessible are Vancouver's cultural amenities (libraries, museums, 
+                    art galleries, and theatres) using the current transit system?",style="font-size:20px"),
                             
-                            tags$br(),tags$br(),tags$h4("Methodology/Results:"),
-                            "To address the computational intensity of multimodal shortest path routing, we use Conveyalâs R5 
+                            tags$br(),tags$br(),tags$h4("Methodology/Results:",style=" font-family:Papyrus, serif;"),
+                            tags$text("To address the computational intensity of multimodal shortest path routing, we use Conveyalâs R5 
                     realistic routing algorithm available in R as r5r. It allows us to compute over 5.3 million transit
                     routes repeatedly, 360 times in a day over 3 days, in just a matter of one hour. The travel
                     time matrix was then used to develop three accessibility measures: one based on time, one on
                     scores, and one on percentiles which were visualized with Leaflet and Kepler.gl and embedded 
-                    in an R shiny dashboard. ",
+                    in an R shiny dashboard. ",style="font-size:20px"),
                             
-                            tags$br(),tags$br(),tags$h4("Conclusion:"),
-                            "This project provides a high performing and scalable framework for producing three unique 
+                            tags$br(),tags$br(),tags$h4("Conclusion:",style=" font-family:Papyrus, serif;"),
+                            tags$text("This project provides a high performing and scalable framework for producing three unique 
                     transit accessibility measures for network analysis using Greater Vancouver as an initial 
                     use-case scenario. The frameworks can be further developed and adopted by urban developers
-                    to ensure equitable, sustainable, and optimal urban design for years to come.",
+                    to ensure equitable, sustainable, and optimal urban design for years to come.",style="font-size:20px"),
                             
-                            tags$br(),tags$br(),tags$h4("Code"),
+                            tags$br(),tags$br(),tags$h4("Code",style=" font-family:Papyrus, serif;"),
                             "Code and more detailed information are available at ",
                             tags$a(href="https://github.com/ubco-mds-2020-labs/w2020-data599-capstone-projects-statistics-canada-transit", "Github."),
                             tags$br(),tags$br(),tags$h4("Authors"),
-                            "Graham Kerford,Luka Vukovic,Yuxuan Cui,Rain Shen",tags$br(),
-                            "Computer Science and Statistics",tags$br(),
-                            "Faculty of Science,University of British Columbia",tags$br(),
+                            tags$p("Graham Kerford,Luka Vukovic,Yuxuan Cui,Rain Shen", style="font-weight: bold;"),tags$br(),
+                            tags$p("Computer Science and Statistics", style="font-weight: bold;"),tags$br(),
+                            tags$p("Faculty of Science,University of British Columbia", style="font-weight: bold;"),tags$br(),
                             tags$img(src = "logo.png", width = "550px", height = "200px")
                         )
                )
