@@ -64,21 +64,21 @@ ui <- shinyUI(
 
                 navbarMenu("Leaflet Accessibility Visualizations", 
                            "----",
-                           tabPanel("Score Measures", 
+                           tabPanel("Score Percentile Measures", 
                                     div(class="outer",
                                         tags$head(includeCSS("styles/styles.css"), includeScript("styles/gomap.js")), # styles
                                         htmlOutput('map_sco'), # leaflet html map
                                         absolutePanel(id = "title", class = "panel panel-default",
                                                       top = 20, left = 65, right = "auto", bottom = "auto",
                                                       width = "auto", height = "auto",
-                                                      h2('Score Measure for Transit Accessibility to Cultural Amenities')),
+                                                      h2('Score Percentile Measure')),
                                         
                                         absolutePanel(id = "controls", class = "panel panel-default",
                                                       fixed = TRUE, draggable = TRUE,
                                                       top = 70, left = "auto", right = 20, bottom = "auto",
                                                       width = 360, height = "auto",
                                                       h2("Accessibility Explorer"),
-                                                      h5("Score measures are based on the worst case scenario trip time where worst case is to the average time + 2 standard deviations. A higher score corresponds to a lower transit time."),
+                                                      h5("Score measures are based on the worst case scenario trip time where worst case is to the average time + 2 standard deviations. A higher score corresponds to a lower transit time, although the percentile is take to render it more interprettable."),
                                                       br(),
                                                       selectInput(inputId = "type_sco", label = "Amenity Type", choices = amenity_factor),
                                                       selectInput(inputId = "weight", label =  "Amenity Weights", choices= weight_factor),
@@ -94,7 +94,7 @@ ui <- shinyUI(
                                         absolutePanel(id = "title", class = "panel panel-default",
                                                       top = 20, left = 65, right = "auto", bottom = "auto",
                                                       width = "auto", height = "auto",
-                                                      h2('Isochrone Measure for Transit Accessibility to Cultural Amenities')),
+                                                      h2('Isochrone Measure')),
                                         
                                         absolutePanel(id = "controls", class = "panel panel-default",
                                                       fixed = TRUE, draggable = TRUE,
@@ -113,7 +113,7 @@ ui <- shinyUI(
                                         absolutePanel(id = "title", class = "panel panel-default",
                                                       top = 20, left = 65, right = "auto", bottom = "auto",
                                                       width = "auto", height = "auto",
-                                                      h2('Network Efficiency for Transit Accessibility to Cultural Amenities')),
+                                                      h2('Network Efficiency')),
                                         
                                         absolutePanel(id = "controls", class = "panel panel-default",
                                                       fixed = TRUE, draggable = TRUE,
@@ -130,25 +130,25 @@ ui <- shinyUI(
 
                navbarMenu("Kepler Accessibility Visualizations",
                           "----",
-                          tabPanel("Score Measures",
+                          tabPanel("Score Percentile Measures",
                                    div(class="outer",
                                        tags$head(includeCSS("styles/styles.css"), includeScript("styles/gomap.js")), # styles
                                        htmlOutput('map_kep'),
                                        absolutePanel(id = "title", class = "panel panel-default",
                                                      top = 20, left = 65, right = "auto", bottom = "auto",
                                                      width = "auto", height = "auto",
-                                                     h2('Score Measure for Transit Accessibility to Cultural Amenities')),
+                                                     h2('Score Percentile Measure')),
                                        
                                        absolutePanel(id = "controls", class = "panel panel-default",
                                                      fixed = TRUE, draggable = TRUE,
                                                      top = 60, left = "auto", right = 20, bottom = "auto",
                                                      width = 360, height = "auto",
                                                      h2("Accessibility Explorer"),
-                                                     h5("Score measures are based on the worst case scenario trip time where worst case is to the average time + 2 standard deviations. A higher score corresponds to a lower transit time."),
+                                                     h5("Score measures are based on the worst case scenario trip time where worst case is to the average time + 2 standard deviations. A higher score corresponds to a lower transit time, although the percentile is take to render it more interprettable."),
                                                      br(),
                                                      selectInput(inputId = "type_kep", label = "Amenity Type", choices = amenity_factor)),
                                    )),
-                          tabPanel("Weekday/Weekend Score Comparison",
+                          tabPanel("Weekday/Weekend Score Percentile Comparison",
                                    div(class="outer",
                                        tags$head(includeCSS("styles/styles.css"), includeScript("styles/gomap.js")), # styles
                                        htmlOutput('kep_com'),
