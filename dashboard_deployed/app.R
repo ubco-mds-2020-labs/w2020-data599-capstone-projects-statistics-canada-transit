@@ -1,6 +1,7 @@
 library(shiny)
 library(glue)
 library(stringr)
+library(tippy)
 
 # for data table page
 library(DT)
@@ -48,12 +49,18 @@ ui <- shinyUI(
                                 absolutePanel(id = "controls", class = "panel panel-default",
                                             fixed = TRUE, draggable = TRUE,
                                             top = 60, left = "auto", right = 20, bottom = "auto",
-                                            width = 330, height = "auto",
+                                            width = 400, height = "auto",
                                             h2("Accessibility Explorer"),
+                                            h4("Selected map:"),
+                                            textOutput("scoreText"),
+                                            h4(),
                                             selectInput(inputId = "type_sco", label = "Amenity Type", choices = amenity_factor),
+                                            tippy_this(elementId = "type_sco", tooltip = "Select Amenity to filter by"),
                                             selectInput(inputId = "weight", label =  "Amenity Weights", choices= weight_factor),
                                             selectInput(inputId = "nearest_n", label =  "Nearest n Amenities", choices = nearest_n_factor),
-                                            selectInput(inputId = 'stop_sco', label = "Include Bus Stops", choices = stops)),
+                                            selectInput(inputId = 'stop_sco', label = "Include Bus Stops", choices = stops)
+                                            
+                                            ),
                                 # citations
                                 # tags$div(id="cite", 'Data compiled for ', tags$em('Citation Here'), ' by Author (Publisher, Year).')
                             )),
@@ -66,6 +73,9 @@ ui <- shinyUI(
                                             top = 60, left = "auto", right = 20, bottom = "auto",
                                             width = 330, height = "auto",
                                             h2("Accessibility Explorer"),
+                                            h4("Selected map:"),
+                                            textOutput("kepText"),
+                                            h4(),
                                             selectInput(inputId = "type_kep", label = "Amenity Type", choices = amenity_factor)),
                                 # citations
                                 # tags$div(id="cite", 'Data compiled for ', tags$em('Citation Here'), ' by Author (Publisher, Year).')
@@ -77,8 +87,11 @@ ui <- shinyUI(
                                 absolutePanel(id = "controls", class = "panel panel-default",
                                             fixed = TRUE, draggable = TRUE,
                                             top = 60, left = "auto", right = 20, bottom = "auto",
-                                            width = 330, height = "auto",
+                                            width = 400, height = "auto",
                                             h2("Accessibility Explorer"),
+                                            h4("Selected map:"),
+                                            textOutput("isoText"),
+                                            h4(),
                                             selectInput(inputId = "type_iso", label = "Amenity Type", choices = amenity_factor),
                                             selectInput(inputId = 'stop_iso', label = "Include Bus Stops", choices = stops)),
                                 # citations
@@ -93,6 +106,9 @@ ui <- shinyUI(
                                             top = 60, left = "auto", right = 20, bottom = "auto",
                                             width = 330, height = "auto",
                                             h2("Accessibility Explorer"),
+                                            h4("Selected map:"),
+                                            textOutput("timeText"),
+                                            h4(),
                                             selectInput(inputId = "type_kep_time", label = "Amenity Type", choices = amenity_factor),
                                             selectInput(inputId = "day_kep", label = "Day", choices = day_factor)),
                                        
@@ -109,6 +125,9 @@ ui <- shinyUI(
                                                     top = 60, left = "auto", right = 20, bottom = "auto",
                                                     width = 330, height = "auto",
                                                     h2("Accessibility Explorer"),
+                                                    h4("Selected map:"),
+                                                    textOutput("effText"),
+                                                    h4(),
                                                     selectInput(inputId = 'type_eff', label = "Efficiency Type", choices = efficiency_type),
                                                     selectInput(inputId = 'stop_eff', label = "Include Bus Stops", choices = stops)),
                                         # citations
@@ -222,11 +241,99 @@ ui <- shinyUI(
     
 server <- function(input, output){
     
+    
+    # get html path
+    getScore_map <- reactive({ 
+        amn_name <- input$type_sco
+        weight <- str_to_lower(input$weight)
+        nearest_n <- input$nearest_n
+        stop <- input$stop_sco
+        html_file <- glue("{amn_name} - wt({weight}) - n({nearest_n}) - stops({stop})")
+        output$scoreText <- renderText({html_file})
+        return(glue('/{html_file}.html'))
+    })
+    
+    
+    
+    getKepler_map <- reactive({ 
+        amn_name <- input$type_kep
+        html_file <-  glue('{amn_name} Score Kepler')
+        output$kepText <- renderText({html_file})
+        return(glue('/{html_file}.html'))
+    })
+    
+    getIsochrone_map <- reactive({ 
+        amn_name <- input$type_iso
+        stop <- input$stop_iso
+        html_file <-  glue('{amn_name} - isochrone - stops({stop})')
+        output$isoText <- renderText({html_file})
+        return(glue('/{html_file}.html'))
+    })
+    
+    getEfficiency_map <- reactive({ 
+        efficiency <- input$type_eff
+        stop <- input$stop_eff
+        html_file <-  glue('{efficiency} Efficiency - stops({stop})')
+        output$effText <- renderText({html_file})
+        return(glue('/{html_file}.html'))
+    })
+
+    getKepler_time <- reactive({ 
+        amn_name <- input$type_kep_time
+        day <- input$day_kep
+        html_file <-  glue('{amn_name} time {day}')
+        output$timeText <- renderText({html_file})
+        return(glue('/{html_file}.html'))
+    })
+
+    # this is where the resource path names are used
+    # dynamic file calling
+    output$map_sco <- renderUI({
+        tags$iframe(seamless="seamless", src=paste0('map_sco', getScore_map()),
+                    style="position: absolute; top: 0; right: 0; bottom: 0: left: 0;",
+                    width='100%',
+                    height='100%')
+    })
+    
+    # dynamic file calling kepler map
+    output$map_kep <- renderUI({
+        tags$iframe(seamless="seamless", src=paste0('map_kep', getKepler_map()),
+                    style="position: absolute; top: 0; right: 0; bottom: 0: left: 0;",
+                    width='100%',
+                    height='100%')
+    })
+    
+    # dynamic file calling isochrone map
+    output$map_iso <- renderUI({
+        tags$iframe(seamless="seamless", src=paste0('map_iso', getIsochrone_map()),
+                    style="position: absolute; top: 0; right: 0; bottom: 0: left: 0;",
+                    width='100%',
+                    height='100%')
+    })
+    
+    # dynamic file calling efficiency map
+    output$map_eff <- renderUI({
+        tags$iframe(seamless="seamless", src=paste0('map_eff', getEfficiency_map()),
+                    style="position: absolute; top: 0; right: 0; bottom: 0: left: 0;",
+                    width='100%',
+                    height='100%')
+    })
+
+    # dynamic file calling kepler time window map
+    output$keplertime <- renderUI({
+        tags$iframe(seamless="seamless", src=paste0('kep_time', getKepler_time()),
+                    style="position: absolute; top: 0; right: 0; bottom: 0: left: 0;",
+                    width='100%',
+                    height='100%')
+    })
+    
+    
     # select the data table 
     output$summary_table = DT::renderDataTable({
         sumstat_df
     })
-
+    
+    # Data Explorer tab
     # plot based on the selected row shows that  total dissemination blocks
     output$plot_1 <- renderPlot({
 
@@ -279,84 +386,6 @@ server <- function(input, output){
                   axis.ticks.y = element_blank())
 
         ggarrange(p2, p3)
-    })
-
-    # get html path
-    getScore_map <- reactive({ 
-        amn_name <- input$type_sco
-        weight <- str_to_lower(input$weight)
-        nearest_n <- input$nearest_n
-        stop <- input$stop_sco
-        html_file <- glue("{amn_name} - wt({weight}) - n({nearest_n}) - stops({stop})")
-        return(glue('/{html_file}.html'))
-    })
-    
-    getKepler_map <- reactive({ 
-        amn_name <- input$type_kep
-        html_file <-  glue('{amn_name} Score Kepler')
-        return(glue('/{html_file}.html'))
-    })
-    
-    getIsochrone_map <- reactive({ 
-        amn_name <- input$type_iso
-        stop <- input$stop_iso
-        html_file <-  glue('{amn_name} - isochrone - stops({stop})')
-        return(glue('/{html_file}.html'))
-    })
-    
-    getEfficiency_map <- reactive({ 
-        efficiency <- input$type_eff
-        stop <- input$stop_eff
-        html_file <-  glue('{efficiency} Efficiency - stops({stop})')
-        return(glue('/{html_file}.html'))
-    })
-
-    getKepler_time <- reactive({ 
-        amn_name <- input$type_kep_time
-        day <- input$day_kep
-        html_file <-  glue('{amn_name} time {day}')
-        return(glue('/{html_file}.html'))
-    })
-
-    # this is where the resource path names are used
-    # dynamic file calling
-    output$map_sco <- renderUI({
-        tags$iframe(seamless="seamless", src=paste0('map_sco', getScore_map()),
-                    style="position: absolute; top: 0; right: 0; bottom: 0: left: 0;",
-                    width='100%',
-                    height='100%') # dynamic height (100%) doesn't work so I set it manually
-    })
-    
-    # dynamic file calling kepler map
-    output$map_kep <- renderUI({
-        tags$iframe(seamless="seamless", src=paste0('map_kep', getKepler_map()),
-                    style="position: absolute; top: 0; right: 0; bottom: 0: left: 0;",
-                    width='100%',
-                    height='100%') # dynamic height (100%) doesn't work so I set it manually
-    })
-    
-    # dynamic file calling isochrone map
-    output$map_iso <- renderUI({
-        tags$iframe(seamless="seamless", src=paste0('map_iso', getIsochrone_map()),
-                    style="position: absolute; top: 0; right: 0; bottom: 0: left: 0;",
-                    width='100%',
-                    height='100%') # dynamic height (100%) doesn't work so I set it manually
-    })
-    
-    # dynamic file calling efficiency map
-    output$map_eff <- renderUI({
-        tags$iframe(seamless="seamless", src=paste0('map_eff', getEfficiency_map()),
-                    style="position: absolute; top: 0; right: 0; bottom: 0: left: 0;",
-                    width='100%',
-                    height='100%') # dynamic height (100%) doesn't work so I set it manually
-    })
-
-    # dynamic file calling kepler time window map
-    output$keplertime <- renderUI({
-        tags$iframe(seamless="seamless", src=paste0('kep_time', getKepler_time()),
-                    style="position: absolute; top: 0; right: 0; bottom: 0: left: 0;",
-                    width='100%',
-                    height='100%') # dynamic height (100%) doesn't work so I set it manually
     })
 }
     
