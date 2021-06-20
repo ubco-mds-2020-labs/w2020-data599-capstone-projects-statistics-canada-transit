@@ -7,14 +7,12 @@ scoremap_dir <- "/maps/score_maps"
 kepmap_dir <- "/maps/kepler_maps"
 isomap_dir <- "/maps/isochrone_maps"
 effmap_dir <- "/maps/efficiency_maps"
-keptime_dir <- "/kepler_time"
 
 # Add resource paths, with specific resource names
 addResourcePath('map_sco', paste0(getwd(), scoremap_dir))
 addResourcePath('map_kep', paste0(getwd(), kepmap_dir))
 addResourcePath('map_iso', paste0(getwd(), isomap_dir)) 
 addResourcePath('map_eff', paste0(getwd(), effmap_dir)) 
-addResourcePath('keptime', paste0(getwd(), keptime_dir))
 
 # Factor vector names
 amenity_factor <- c("Library or Archives", "Gallery", "Museum", "Theatre and Concert Hall")
@@ -22,7 +20,6 @@ weight_factor <- c('No', 'Yes')
 nearest_n_factor <- c('1', '2', '3', 'ALL')
 stops <- c('No', 'Yes')
 efficiency_type <- c('Continuous', 'Discrete')
-day_factor <- c('Friday', 'Saturday', 'Sunday')
 
 ui <- shinyUI(
     navbarPage("Vancouver Transit Accessibility to Cultural Amenities",
@@ -72,22 +69,6 @@ ui <- shinyUI(
                                             h2("Accessibility Explorer"),
                                             selectInput(inputId = "type_iso", label = "Amenity Type", choices = amenity_factor),
                                             selectInput(inputId = 'stop_iso', label = "Include Bus Stops", choices = stops)),
-                                # citations
-                                # tags$div(id="cite", 'Data compiled for ', tags$em('Citation Here'), ' by Author (Publisher, Year).')
-                            )),
-                            tabPanel("Kepler.gl Time Window",
-                            div(class="outer",
-                                tags$head(includeCSS("styles.css"), includeScript("gomap.js")),
-                                htmlOutput('keplertime'),
-                                # options panel
-                                absolutePanel(id = "controls", class = "panel panel-default",
-                                            fixed = TRUE, draggable = TRUE,
-                                            top = 60, left = "auto", right = 20, bottom = "auto",
-                                            width = 330, height = "auto",
-                                            h2("Accessibility Explorer"),
-                                            selectInput(inputId = "type_kep", label = "Amenity Type", choices = amenity_factor),
-                                            selectInput(inputId = "day_kep", label = "Day", choices = day_factor)),
-                                       
                                 # citations
                                 # tags$div(id="cite", 'Data compiled for ', tags$em('Citation Here'), ' by Author (Publisher, Year).')
                             )),
@@ -145,13 +126,6 @@ server <- function(input, output){
         return(glue('/{html_file}.html'))
     })
     
-    getPage_keptime <- reactive({ 
-        amn_name <- input$type_kep
-        day <- input$day_kep
-        html_file <-  glue('{amn_name} time {day}')
-        return(glue('/{html_file}.html'))
-    })
-    
     # dynamic file calling
     output$map_sco <- renderUI({
         tags$iframe(seamless="seamless", src=paste0('map_sco', getScore_map()),
@@ -179,14 +153,6 @@ server <- function(input, output){
     # dynamic file calling efficiency map
     output$map_eff <- renderUI({
         tags$iframe(seamless="seamless", src=paste0('map_eff', getEfficiency_map()),
-                    style="position: absolute; top: 0; right: 0; bottom: 0: left: 0;",
-                    width='100%',
-                    height='100%') # dynamic height (100%) doesn't work so I set it manually
-    })
-    
-    # dynamic file calling kepler time window map
-    output$keplertime <- renderUI({
-        tags$iframe(seamless="seamless", src=paste0('keptime', getPage_keptime()),
                     style="position: absolute; top: 0; right: 0; bottom: 0: left: 0;",
                     width='100%',
                     height='100%') # dynamic height (100%) doesn't work so I set it manually
