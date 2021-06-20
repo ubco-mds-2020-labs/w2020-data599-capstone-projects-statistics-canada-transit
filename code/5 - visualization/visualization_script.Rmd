@@ -37,9 +37,9 @@ knit_print.data.frame <- lemon_print
 knit_print.tbl <- lemon_print
 knit_print.summary <- lemon_print
 
-shapepath <- "../../data/1_raw/shape_files"
+shapepath <- "../../data/1_raw/shape_files/"
 comppath <- "../../data/3_computed/"
-mappath <- "../../data/html_maps"    # output directory
+mappath <- "../../data/html_maps/"    # output directory
 
 ```
 
@@ -51,8 +51,8 @@ mappath <- "../../data/html_maps"    # output directory
 
 ### Import the Accessibility Measures
 ```{r}
-scores_frame <- read.csv(paste0(comppath, '/accessibility_measures/scores_frame.csv'))
-isochr_frame <- read.csv(paste0(comppath, '/accessibility_measures/isochrone_frame.csv'))
+scores_frame <- read.csv(paste0(comppath, 'accessibility_measures/scores_frame.csv'))
+isochr_frame <- read.csv(paste0(comppath, 'accessibility_measures/isochrone_frame.csv'))
 
 # convert factor columns to factor
 scores_frame[, c(1,2,4,5)] <- lapply(scores_frame[, c(1,2,4,5)], as.factor)
@@ -73,7 +73,7 @@ head(isochr_frame)
 
 ```{r message=FALSE, warning=FALSE}
 
-vancouver_shape <- st_read(paste0(shapepath, '/DB_Van_CMA.shp'), stringsAsFactors = FALSE)
+vancouver_shape <- st_read(paste0(shapepath, 'DB_Van_CMA.shp'), stringsAsFactors = FALSE)
 
 # id to factor
 vancouver_shape$DBUID <- as.factor(vancouver_shape$DBUID)
@@ -144,7 +144,7 @@ efficiency_frame_viz <- mapping_data_prepper(vancouver_shape, efficiency_frame,
 
 ```{R}
 
-# this cell used to be used for visualization experimentation
+# this cell used to be for visualization experimentation
 # the functions have since been migrated to the visualization section of:
 # 0 - custom_functions
 
@@ -162,22 +162,23 @@ efficiency_frame_viz <- mapping_data_prepper(vancouver_shape, efficiency_frame,
 
 ```{r}
 
+source('../0 - custom_functions/functions.R')
+
 amenities <- unique(scores_viz_frame$type)
 weights <- unique(scores_viz_frame$weight)
 nearest_n <- unique(scores_viz_frame$nearest_n)
-bus_levels <- c(TRUE,FALSE)
+bus_levels <- c(TRUE, FALSE)
 
 # Custom for loop for specific map outputting
 # Rendering dozens of maps can take a long time (10-20 minutes)
 for (amenity in amenities) { 
-  
   for (add_stop in bus_levels) {
     
     # 4 isochrone maps
     map_maker_isochrone(data = isochr_viz_frame,
                         bus_data = station_locs,
                         amenity = amenity,
-                        bus_levels = add_stop,
+                        add_stop = add_stop,
                         output_dir = paste0(mappath, '/isochrone_maps'))
   
     for (wt in weights) {
@@ -195,19 +196,30 @@ for (amenity in amenities) {
     }
   }
 }
+for (amenity in amenities) { 
+  for (add_stop in bus_levels) {
+    # 4 isochrone maps
+    map_maker_isochrone(data = isochr_viz_frame,
+                        bus_data = station_locs,
+                        amenity = amenity,
+                        add_stop = add_stop,
+                        output_dir = paste0(mappath, '/isochrone_maps'))
+  }
+}
 
-source('../0 - custom_functions/functions.R')
-
-# 2 efficiency maps
-map_maker_efficiency_cont(efficiency_frame_viz, 
-                          bus_data = station_locs,
-                          #view = TRUE,
-                          output_dir = paste0(mappath, '/efficiency_maps'))
-
-map_maker_efficiency_quant(efficiency_frame_viz,
-                           bus_data = station_locs,
-                           #view = TRUE,
-                           output_dir = paste0(mappath, '/efficiency_maps'))
+for (add_stop in bus_levels) { 
+  
+  # 2 efficiency maps
+  map_maker_efficiency_cont(efficiency_frame_viz, 
+                            bus_data = station_locs,
+                            add_stop = add_stop,
+                            output_dir = paste0(mappath, '/efficiency_maps'))
+  
+  map_maker_efficiency_discrete(efficiency_frame_viz,
+                             bus_data = station_locs,
+                             add_stop = add_stop,
+                             output_dir = paste0(mappath, '/efficiency_maps'))
+}
 
 
 ```
