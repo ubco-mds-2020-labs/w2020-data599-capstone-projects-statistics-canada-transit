@@ -166,7 +166,7 @@ ui <- shinyUI(
                           "----",
                           "Visualizations",
                           
-                          tabPanel("Unsupervised Learning Analysis",
+                          tabPanel("Unsupervised Analysis",
                                    tags$div(
                                        sidebarPanel(
                                            #numericInput("npc", "Numer of Principal Components", 2),

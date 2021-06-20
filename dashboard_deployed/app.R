@@ -16,6 +16,10 @@ library(FactoMineR)
 library(shinyalert)
 library(factoextra)
 
+# corr plot
+library("cowplot")
+library("corrplot")
+
 # Factor vector names
 
 # Directory path
