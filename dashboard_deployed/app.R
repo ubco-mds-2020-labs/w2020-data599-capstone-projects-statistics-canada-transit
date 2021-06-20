@@ -13,10 +13,21 @@ library(ggplot2)
 # functions
 #source('functions.R')
 
-
 #  import data
 all_ams <- read.csv("datatable/all_data.csv")[,-1]  # ams = accessibility measures
 sumstat_df <- read_csv("datatable/summary_statistics_by_city.csv")[,-1]
+
+# for unpuervised learning page
+library(dplyr)
+library(cluster)
+library(FactoMineR)
+library(shinyalert)
+library(factoextra)
+
+# corr plot
+library("cowplot")
+library("corrplot")
+
 
 # Directory path
 scoremap_dir <- "/maps/score_maps"
@@ -24,6 +35,7 @@ kepmap_dir <- "/maps/kepler_maps/general"
 isomap_dir <- "/maps/isochrone_maps"
 effmap_dir <- "/maps/efficiency_maps"
 kepmap_dir_time_window <- "/maps/kepler_maps/time_window"
+compare_dir <- "/maps/kepler_maps/compare"
 
 # Add resource paths, with specific resource names
 addResourcePath('map_sco', paste0(getwd(), scoremap_dir))
@@ -31,6 +43,7 @@ addResourcePath('map_kep', paste0(getwd(), kepmap_dir))
 addResourcePath('map_iso', paste0(getwd(), isomap_dir)) 
 addResourcePath('map_eff', paste0(getwd(), effmap_dir)) 
 addResourcePath('kep_time', paste0(getwd(), kepmap_dir_time_window))
+addResourcePath('kep_com', paste0(getwd(), compare_dir))
 
 # Factor vector names
 amenity_factor <- c("Library or Archives", "Gallery", "Museum", "Theatre and Concert Hall")
@@ -40,6 +53,11 @@ stops <- c('No', 'Yes')
 efficiency_type <- c('Continuous', 'Discrete')
 day_factor <- c('Friday', 'Saturday', 'Sunday')
 
+## PCA data
+df_pca<-read_csv("datatable/pca_data_1.csv")
+df_pca<-data.frame(column_to_rownames(df_pca, var = "NAME"))
+df.num<-df_pca%>%select(where(is.numeric),-avg_score)
+colnames(df.num)<-c("SCORE","POPULATION","AMENITY","BUS STOPS","BUS FREQ","INDEX","TRANSIT TIME")
 
 
 ui <- shinyUI(
@@ -55,14 +73,17 @@ ui <- shinyUI(
                                 absolutePanel(id = "controls", class = "panel panel-default",
                                             fixed = TRUE, draggable = TRUE,
                                             top = 60, left = "auto", right = 20, bottom = "auto",
-                                            width = 330, height = "auto",
+                                            width = 360, height = "auto",
                                             h2("Accessibility Explorer"),
+                                            h4("Selected map score measure:"),
+                                            h5("Based on worst case scenario for  transit time (avg time / 2 SD). A higher score corresponds to a lower transit time"),
+                                            h4(),
                                             selectInput(inputId = "type_sco", label = "Amenity Type", choices = amenity_factor),
                                             selectInput(inputId = "weight", label =  "Amenity Weights", choices= weight_factor),
                                             selectInput(inputId = "nearest_n", label =  "Nearest n Amenities", choices = nearest_n_factor),
-                                            selectInput(inputId = 'stop_sco', label = "Include Bus Stops", choices = stops)),
-                                # citations
-                                # tags$div(id="cite", 'Data compiled for ', tags$em('Citation Here'), ' by Author (Publisher, Year).')
+                                            selectInput(inputId = 'stop_sco', label = "Include Bus Stops", choices = stops)
+                                            
+                                            ),
                             )),
                             tabPanel("3D Score Measures",
                             div(class="outer",
@@ -71,11 +92,12 @@ ui <- shinyUI(
                                 absolutePanel(id = "controls", class = "panel panel-default",
                                             fixed = TRUE, draggable = TRUE,
                                             top = 60, left = "auto", right = 20, bottom = "auto",
-                                            width = 330, height = "auto",
+                                            width = 360, height = "auto",
                                             h2("Accessibility Explorer"),
+                                            h4("Selected map score measure:"),
+                                            h5("3D map based on worst case scenario for  transit time (avg time / 2 SD). A higher score corresponds to a lower transit time"),
+                                            h4(),
                                             selectInput(inputId = "type_kep", label = "Amenity Type", choices = amenity_factor)),
-                                # citations
-                                # tags$div(id="cite", 'Data compiled for ', tags$em('Citation Here'), ' by Author (Publisher, Year).')
                             )),
                             tabPanel("Isochrone Measures",
                             div(class="outer",
@@ -84,27 +106,42 @@ ui <- shinyUI(
                                 absolutePanel(id = "controls", class = "panel panel-default",
                                             fixed = TRUE, draggable = TRUE,
                                             top = 60, left = "auto", right = 20, bottom = "auto",
-                                            width = 330, height = "auto",
+                                            width = 360, height = "auto",
                                             h2("Accessibility Explorer"),
+                                            h4("Selected map score measure:"),
+                                            h5("Maximing time to get to the nearest amenity."),
+                                            h4(),
                                             selectInput(inputId = "type_iso", label = "Amenity Type", choices = amenity_factor),
                                             selectInput(inputId = 'stop_iso', label = "Include Bus Stops", choices = stops)),
-                                # citations
-                                # tags$div(id="cite", 'Data compiled for ', tags$em('Citation Here'), ' by Author (Publisher, Year).')
                             )),
-                            tabPanel("3D Time Window Comparison",
+                            tabPanel("3D Time Window",
                             div(class="outer",
                                 tags$head(includeCSS("styles/styles.css"), includeScript("styles/gomap.js")),# styles
                                 htmlOutput('keplertime'),
                                 absolutePanel(id = "controls", class = "panel panel-default",
                                             fixed = TRUE, draggable = TRUE,
                                             top = 60, left = "auto", right = 20, bottom = "auto",
-                                            width = 330, height = "auto",
+                                            width = 360, height = "auto",
                                             h2("Accessibility Explorer"),
+                                            h4("Selected map score measure:"),
+                                            h5("3D map based on the maximing time to get to the nearest amenity."),
+                                            h4(),
                                             selectInput(inputId = "type_kep_time", label = "Amenity Type", choices = amenity_factor),
                                             selectInput(inputId = "day_kep", label = "Day", choices = day_factor)),
-                                       
-                                # citations
-                                # tags$div(id="cite", 'Data compiled for ', tags$em('Citation Here'), ' by Author (Publisher, Year).')
+                            )),
+                            tabPanel("Comparison",
+                            div(class="outer",
+                                tags$head(includeCSS("styles.css"), includeScript("gomap.js")), # styles
+                                htmlOutput('kep_com'), # kepler.gl html map
+                                absolutePanel(id = "controls", class = "panel panel-default",
+                                            fixed = TRUE, draggable = TRUE,
+                                            top = 60, left = "auto", right = 20, bottom = "auto",
+                                            width = 360, height = "auto",
+                                            h2("Accessibility Explorer"),
+                                            h4("Selected map score measure:"),
+                                            h5("3D map comparison based on worst case scenario for  transit time (avg time / 2 SD). A higher score corresponds to a lower transit time"),
+                                            h4(),
+                                            selectInput(inputId = "type_com", label = "Amenity Type", choices = amenity_factor)),
                                    )),
                             tabPanel("Network Efficiency",
                                     div(class="outer",
@@ -114,14 +151,80 @@ ui <- shinyUI(
                                         absolutePanel(id = "controls", class = "panel panel-default",
                                                     fixed = TRUE, draggable = TRUE,
                                                     top = 60, left = "auto", right = 20, bottom = "auto",
-                                                    width = 330, height = "auto",
+                                                    width = 360, height = "auto",
                                                     h2("Accessibility Explorer"),
+                                                    h4("Selected map score measure:"),
+                                                    h5("Scores based on the difference between the accessibility and the transit needs"),
+                                                    h4(),
                                                     selectInput(inputId = 'type_eff', label = "Efficiency Type", choices = efficiency_type),
                                                     selectInput(inputId = 'stop_eff', label = "Include Bus Stops", choices = stops)),
-                                        # citations
-                                        # tags$div(id="cite", 'Data compiled for ', tags$em('Citation Here'), ' by Author (Publisher, Year).')
                                     ))
                 ),
+
+               tabPanel("Unsupervised Analysis",
+                        tags$div(
+                            sidebarPanel(
+                                #numericInput("npc", "Numer of Principal Components", 2),
+                                selectInput("var","Select Variables:",
+                                            choices = colnames(df.num),
+                                            multiple = T,
+                                            selected=colnames(df.num)),
+                            ),
+                            mainPanel(
+                                tabsetPanel(
+                                    tabPanel("Scree Plot",
+                                             plotOutput("plot_scree")
+                                    ),
+                                    
+                                    tabPanel("Correlation Plot",
+                                             plotOutput("plot_cor")
+                                    ),
+                                    tabPanel(" Contributions Plot",
+                                             plotOutput("plot_con")
+                                    ),
+                                    tabPanel("Individual Plot",
+                                             plotOutput("plot_ind")
+                                    ),
+                                    tabPanel("Biplot",
+                                             plotOutput("plot_bi")
+                                    ),
+                                    tabPanel("Clustering",
+                                             plotOutput("plot_cluster")
+                                    )
+                                ),
+                            )
+                            
+                        )
+                        
+                        
+               ),                        tabPanel("Data Explorer",
+                                                  tabPanel("summary_statistics", DT::dataTableOutput("summary_table")),
+                                                  # Create a new Row in the UI for selectInputs
+                                                  fluidRow(
+                                                      column(4,
+                                                             selectInput("weights",
+                                                                         "Weights:",
+                                                                         choices=c("Yes"="yes","No"="no"),
+                                                                         selected = "yes")
+                                                      ),
+                                                      column(4,
+                                                             selectInput(inputId="nearest",
+                                                                         label="N Amennity",
+                                                                         choices=c("All Amenity"="avg_time_to_any_amenity",
+                                                                                   "Nearest Amenity"="time_to_nearest_amenity"),
+                                                                         selected = "All Amenity")
+                                                      ),
+                                                      tags$br(), 
+                                                      column(4,h4("Click the row to select data !"))
+                                                      
+                                                      
+                                                  ),
+                                                  
+                                                  
+                                                  plotOutput("plot_1", click = "plot_click")
+                                                  #plotOutput("plot_2",click = "plot_click"),
+                                                  
+               ),
                
                tabPanel('About this Project',
                         tags$div(
@@ -233,7 +336,19 @@ ui <- shinyUI(
 #remove_modal_spinner()
 
 server <- function(input, output){
+    ##PCA analysis
+    #updates df 
     
+    # scree
+    output$plot_scree<- renderPlot({
+        df_1<-df.num%>%select(input$var)
+        res.pca <- prcomp(na.omit(df_1), scale = T)
+        #res.pca<-prcomp(df.st,scale = T)
+        eig.val <- get_eigenvalue(res.pca)
+        fviz_eig(res.pca, addlabels = TRUE, ylim = c(0, 70))
+    })
+	
+	    
     # select the data table 
     output$summary_table = DT::renderDataTable({
         sumstat_df
@@ -297,8 +412,59 @@ server <- function(input, output){
                   axis.ticks.y = element_blank())
 
         ggarrange(score_plot, time_plot)
-    })
 
+    #cor plot
+    output$plot_cor<- renderPlot({
+        df_1<-df.num%>%select(input$var)
+        res.pca <- prcomp(na.omit(df_1), scale = T)
+        var <- get_pca_var(res.pca)
+        corrplot(var$cos2, is.corr=FALSE)
+    })
+    # contribution plot
+    output$plot_con<- renderPlot({
+        df_1<-df.num%>%select(input$var)
+        res.pca <- prcomp(na.omit(df_1), scale = T)
+        # Contributions of variables to PC1
+        p1<-fviz_contrib(res.pca, choice = "var", axes = 1, top = 10)
+        # Contributions of variables to PC2
+        p2<-fviz_contrib(res.pca, choice = "var", axes = 2, top = 10)
+        
+        plot_grid(p1, p2, labels = "AUTO")
+    })
+    #ind plot
+    output$plot_ind<- renderPlot({
+        df_1<-df.num%>%select(input$var)
+        res.pca <- prcomp(na.omit(df_1), scale = T)
+        fviz_pca_ind(res.pca,
+                     col.ind = "cos2", # Color by the quality of representation
+                     gradient.cols = c("#00AFBB", "#E7B800", "#FC4E07"),
+                     repel = T     # Avoid text overlapping
+        ) +xlim(-9,6)+ylim(-2,2)
+    })
+    #bi plot plot
+    output$plot_bi<- renderPlot({
+        df_1<-df.num%>%select(input$var)
+        res.pca <- prcomp(na.omit(df_1), scale = T)
+        fviz_pca_biplot(res.pca, repel = TRUE, select.var = list(contrib =7),
+                        geom = c("text","point"),
+                        col.var = "#2E9FDF", # Variables color
+                        col.ind = "#696969"  # Individuals color
+        )
+    })
+    #clusteirn
+    output$plot_cluster<- renderPlot({
+        df_1<-df.num%>%select(input$var)
+        df_1<- scale(df_1)
+        # Compute k-means using 4 clusters
+        set.seed(123)
+        km.res <- kmeans(df_1, 4, nstart = 25)
+        # Plot the k-means clustering
+        fviz_cluster(km.res, df_1)+theme_minimal()
+        
+    })
+    
+    
+    
     # get html path
     getScore_map <- reactive({ 
         #show_modal_spinner() # show the modal window
@@ -310,6 +476,8 @@ server <- function(input, output){
         html_file <- glue("{amn_name} - wt({weight}) - n({nearest_n}) - stops({stop})")
         return(glue('/{html_file}.html'))
     })
+    
+    
     
     getKepler_map <- reactive({ 
         amn_name <- input$type_kep
@@ -335,6 +503,12 @@ server <- function(input, output){
         amn_name <- input$type_kep_time
         day <- input$day_kep
         html_file <-  glue('{amn_name} time {day}')
+        return(glue('/{html_file}.html'))
+    })
+    
+    getKepler_com <- reactive({ 
+        amn_name <- input$type_com
+        html_file <-  glue('{amn_name} compare')
         return(glue('/{html_file}.html'))
     })
 
@@ -372,6 +546,15 @@ server <- function(input, output){
         tags$iframe(seamless="seamless", src=paste0('kep_time', getKepler_time()),
                     style="position: absolute; top: 0; right: 0; bottom: 0: left: 0;",
                     width='100%', height='100%')
+    })
+    
+   
+    
+    output$kep_com <- renderUI({
+        tags$iframe(seamless="seamless", src=paste0('kep_com', getKepler_com()),
+                    style="position: absolute; top: 0; right: 0; bottom: 0: left: 0;",
+                    width='100%',
+                    height='100%') # dynamic height (100%) doesn't work so I set it manually
     })
     
 }

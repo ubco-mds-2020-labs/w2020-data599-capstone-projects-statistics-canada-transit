@@ -6,6 +6,10 @@ library(ggpubr)
 library(tidyverse)
 library(readr)
 library(ggplot2)
+library(cluster)
+library(FactoMineR)
+library(shinyalert)
+library(factoextra)
 # Factor vector names
 amenity_factor <- c("Library or Archives", "Gallery", "Museum", "Theatre and Concert Hall")
 weight_factor <- c('No', 'Yes')
@@ -24,11 +28,21 @@ addResourcePath('maps', paste0(getwd(), scoremap_dir)) # 'maps' is the name of t
 addResourcePath('effmap', paste0(getwd(), effmap_dir)) # 'effmap' is the name of the resource
 addResourcePath('keptime', paste0(getwd(), keptime_dir)) # 'keptime' is the name of the resource
 
-#  import data
+##  import data
 all_df = read.csv("datatable/all_data.csv")
 all_df[,-1]->all_df
 sumstat_df<-read_csv("datatable/summary_statistics_by_city.csv")
 sumstat_df[,-1]->sumstat_df
+
+## PCA data
+df_pca<-read_csv("datatable/pca_data_1.csv")
+df_pca<-data.frame(column_to_rownames(df_pca, var = "NAME"))
+df.num<-df_pca%>%select(where(is.numeric))
+
+df.num<-df.num[,-8]
+colnames(df.num)<-c("SCORE","POPULATION","AMENITY","BUS STOPS","BUS FREQ","INDEX","TRANSIT TIME")
+##
+
 ##
 ui <- shinyUI(
     navbarPage("Transit Accessibility Dashboard",
@@ -152,7 +166,47 @@ ui <- shinyUI(
                           "----",
                           "Visualizations",
                           
-                          tabPanel("Urban Equity"),
+                          tabPanel("Unsupervised Analysis",
+                                   tags$div(
+                                       sidebarPanel(
+                                           #numericInput("npc", "Numer of Principal Components", 2),
+                                           selectInput("var","Select Variables:",
+                                                       choices = colnames(df.num),
+                                                       multiple = T,
+                                                      selected=colnames(df.num)),
+                                       ),
+                                       mainPanel(
+                                                 tabsetPanel(
+                                                  tabPanel("Scree Plot",
+                                                           plotOutput("plot_scree")
+                                                           ),
+                                                  
+                                                  tabPanel("Correlation Plot",
+                                                           plotOutput("plot_cor")
+                                                           ),
+                                                  tabPanel(" Contributions Plot",
+                                                           plotOutput("plot_con")
+                                                           ),
+                                                  tabPanel("Individual Plot",
+                                                           plotOutput("plot_ind")
+                                                           ),
+                                                  tabPanel("Biplot",
+                                                           plotOutput("plot_bi")
+                                                           ),
+                                                  tabPanel("Clustering",
+                                                           plotOutput("plot_cluster")
+                                                           )
+                                                 ),
+                                       )
+                                       
+                                   )
+                                   
+                                   
+                                   ),
+                          
+                          
+                          
+                          
                           "----",
                           "Learn More",
                           tabPanel("More information",
@@ -254,10 +308,15 @@ ui <- shinyUI(
                                                           choices=c("All Amenity"="avg_time_to_any_amenity",
                                                               "Nearest Amenity"="time_to_nearest_amenity"),
                                                           selected = "All Amenity")
-                                       )
                                        ),
+                                       tags$br(), 
+                                       column(4,h4("Click the row to select data !"))
+                                      
+                                     
+                                       ),
+                                 
                                        
-                                   plotOutput("plot_1", click = "plot_click"),
+                                   plotOutput("plot_1", click = "plot_click")
                                    #plotOutput("plot_2",click = "plot_click"),
                        
                                    )
@@ -266,6 +325,8 @@ ui <- shinyUI(
 )
     
 server <- function(input, output){
+    
+    
     
     # get html path
     getPage <- reactive({ 
@@ -341,17 +402,83 @@ server <- function(input, output){
                     height='100%') # dynamic height (100%) doesn't work so I set it manually
     })
     
+    ##PCA analysis
+    #updates df 
+    
+    # scree
+    output$plot_scree<- renderPlot({
+        df_1<-df.num%>%select(input$var)
+        res.pca <- prcomp(na.omit(df_1), scale = T)
+        #res.pca<-prcomp(df.st,scale = T)
+        eig.val <- get_eigenvalue(res.pca)
+        fviz_eig(res.pca, addlabels = TRUE, ylim = c(0, 70))
+    })
+    #cor plot
+    output$plot_cor<- renderPlot({
+        df_1<-df.num%>%select(input$var)
+        res.pca <- prcomp(na.omit(df_1), scale = T)
+        var <- get_pca_var(res.pca)
+        corrplot(var$cos2, is.corr=FALSE)
+    })
+    # contribution plot
+    output$plot_con<- renderPlot({
+        df_1<-df.num%>%select(input$var)
+        res.pca <- prcomp(na.omit(df_1), scale = T)
+        # Contributions of variables to PC1
+        p1<-fviz_contrib(res.pca, choice = "var", axes = 1, top = 10)
+        # Contributions of variables to PC2
+        p2<-fviz_contrib(res.pca, choice = "var", axes = 2, top = 10)
+        
+        plot_grid(p1, p2, labels = "AUTO")
+    })
+    #ind plot
+    output$plot_ind<- renderPlot({
+        df_1<-df.num%>%select(input$var)
+        res.pca <- prcomp(na.omit(df_1), scale = T)
+        fviz_pca_ind(res.pca,
+                     col.ind = "cos2", # Color by the quality of representation
+                     gradient.cols = c("#00AFBB", "#E7B800", "#FC4E07"),
+                     repel = T     # Avoid text overlapping
+        ) +xlim(-9,6)+ylim(-2,2)
+    })
+    #bi plot plot
+    output$plot_bi<- renderPlot({
+        df_1<-df.num%>%select(input$var)
+        res.pca <- prcomp(na.omit(df_1), scale = T)
+        fviz_pca_biplot(res.pca, repel = TRUE, select.var = list(contrib =7),
+                        geom = c("text","point"),
+                        col.var = "#2E9FDF", # Variables color
+                        col.ind = "#696969"  # Individuals color
+        )
+    })
+    #clusteirn
+    output$plot_cluster<- renderPlot({
+        df_1<-df.num%>%select(input$var)
+        df_1<- scale(df_1)
+        # Compute k-means using 4 clusters
+        set.seed(123)
+        km.res <- kmeans(df_1, 4, nstart = 25)
+        # Plot the k-means clustering
+        fviz_cluster(km.res, df_1)+theme_minimal()
+  
+        
+    })
+    
+    
+    
+    
     # select the data table 
     output$summary_table = DT::renderDataTable({
         sumstat_df
     })
     
-    # output$all_data = DT::renderDataTable({
-    #     all_df
-    # })
+
     
-   
-    
+   ## add alet
+    observeEvent(input$button, {
+      # Show a modal when the button is pressed
+      shinyalert("Dont worry!", "Select row from data table!", type = "info")
+    })
     # plot based on the selected row shows that  total dissemination blocks
     output$plot_1 <- renderPlot({
         s = input$summary_table_rows_selected
