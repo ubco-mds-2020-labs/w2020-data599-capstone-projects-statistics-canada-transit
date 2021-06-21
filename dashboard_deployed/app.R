@@ -69,7 +69,7 @@ ui <- shinyUI(
                                         htmlOutput('map_sco'), # leaflet html map
                                         absolutePanel(id = "title", class = "panel panel-default",
                                                       top = 20, left = 65, right = "auto", bottom = "auto",
-                                                      width = "auto", height = "auto",
+                                                      width = "auto", height = "auto",draggable = TRUE,
                                                       h2('Score Percentile Measure')),
                                         
                                         absolutePanel(id = "controls", class = "panel panel-default",
@@ -91,7 +91,7 @@ ui <- shinyUI(
                                         htmlOutput('map_iso'), # get the map
                                         absolutePanel(id = "title", class = "panel panel-default",
                                                       top = 20, left = 65, right = "auto", bottom = "auto",
-                                                      width = "auto", height = "auto",
+                                                      width = "auto", height = "auto",draggable = TRUE,
                                                       h2('Isochrone Measure')),
                                         
                                         absolutePanel(id = "controls", class = "panel panel-default",
@@ -110,7 +110,7 @@ ui <- shinyUI(
                                         htmlOutput('map_eff'), # get the map
                                         absolutePanel(id = "title", class = "panel panel-default",
                                                       top = 20, left = 65, right = "auto", bottom = "auto",
-                                                      width = "auto", height = "auto",
+                                                      width = "auto", height = "auto",draggable = TRUE,
                                                       h2('Network Efficiency')),
                                         
                                         absolutePanel(id = "controls", class = "panel panel-default",
@@ -134,7 +134,7 @@ ui <- shinyUI(
                                        htmlOutput('map_kep'),
                                        absolutePanel(id = "title", class = "panel panel-default",
                                                      top = 20, left = 65, right = "auto", bottom = "auto",
-                                                     width = "auto", height = "auto",
+                                                     width = "auto", height = "auto",draggable = TRUE,
                                                      h2('Score Percentile Measure')),
                                        
                                        absolutePanel(id = "controls", class = "panel panel-default",
@@ -152,7 +152,7 @@ ui <- shinyUI(
                                        htmlOutput('kep_com'),
                                        absolutePanel(id = "title", class = "panel panel-default",
                                                      top = 20, left = 65, right = "auto", bottom = "auto",
-                                                     width = "auto", height = "auto",
+                                                     width = "auto", height = "auto",draggable = TRUE,
                                                      h2('Comparison Map for Weekend/Weekday Scores')),
                                        
                                        absolutePanel(id = "controls", class = "panel panel-default",
@@ -168,14 +168,18 @@ ui <- shinyUI(
                                    div(class="outer",
                                        tags$head(includeCSS("styles/styles.css"), includeScript("styles/gomap.js")),# styles
                                        htmlOutput('keplertime'),
+                                       absolutePanel(id = "title", class = "panel panel-default",
+                                                     top = 20, left = 65, right = "auto", bottom = "auto",
+                                                     width = "auto", height = "auto", draggable = TRUE,
+                                                     h2('Transit Time to the Nearest Amenity')),
+                                       
                                        absolutePanel(id = "controls", class = "panel panel-default",
                                                      fixed = TRUE, draggable = TRUE,
                                                      top = 60, left = "auto", right = 20, bottom = "auto",
                                                      width = 360, height = "auto",
                                                      h2("Accessibility Explorer"),
                                                      h5("Isochrones show the time required to reach the nearest amenity."),
-                                                     br(),
-                                                     selectInput(inputId = "type_kep_time", label = "Amenity Type", choices = amenity_factor)
+                                                     br()
                                        ))
                           )
                           
@@ -337,7 +341,6 @@ server <- function(input, output){
     })
     
     
-    
     getKepler_map <- reactive({ 
         amn_name <- input$type_kep
         html_file <-  glue('{amn_name} Score Kepler')
@@ -358,10 +361,16 @@ server <- function(input, output){
         return(glue('/{html_file}.html'))
     })
 
+    # getKepler_time <- reactive({ 
+    #     amn_name <- input$type_kep_time
+    #     #day <- input$day_kep
+    #     html_file <-  glue('{amn_name} time Friday')
+    #     return(glue('/{html_file}.html'))
+    # })
+    
     getKepler_time <- reactive({ 
         amn_name <- input$type_kep_time
-        #day <- input$day_kep
-        html_file <-  glue('{amn_name} time Friday')
+        html_file <-  "Friday_TimeWindow"
         return(glue('/{html_file}.html'))
     })
     
