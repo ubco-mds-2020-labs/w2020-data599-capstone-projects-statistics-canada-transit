@@ -15,22 +15,23 @@ library(ggplot2)
 
 # for unpuervised learning page
 library(cluster)
-library(FactoMineR)
+#library(FactoMineR)
 library(shinyalert)
-library(factoextra)
+#library(factoextra)
 
 # corr plot
-library("cowplot")
+#library("cowplot")
 library("corrplot")
 
 #  import data
 all_ams <- read.csv("datatable/all_data.csv")[,-c(1,2)]  # ams = accessibility measures
 sumstat_df <- read_csv("datatable/summary_statistics_by_city.csv")[,-1]
-df_pca <- read_csv("datatable/pca_data_1.csv")
-df_pca <- data.frame(column_to_rownames(df_pca, var = "NAME"))
-df.num <- df_pca%>%select(where(is.numeric),-avg_score)
-colnames(df.num) <- c("SCORE","POPULATION","AMENITY","BUS STOPS","BUS FREQ","INDEX","TRANSIT TIME")
+df_pca <- read.csv("datatable/pca_data.csv")
+df_pca <- data.frame(column_to_rownames(df_pca, var = "X"))
+df.num <- df_pca%>%select(where(is.numeric))
 
+
+#df_pca<-fread(file.path('../../../data/3_computed', '/unsupervised_data.csv'))
 
 # Directory path
 scoremap_dir <- "/maps/score_maps"
@@ -197,12 +198,12 @@ ui <- shinyUI(
                                 tabsetPanel(
                                     tabPanel("Scree Plot",
                                              plotOutput("plot_scree")),
-                                    tabPanel("Correlation Plot",
-                                             plotOutput("plot_cor")),
-                                    tabPanel(" Contributions Plot",
-                                             plotOutput("plot_con")),
-                                    tabPanel("Individual Plot",
-                                             plotOutput("plot_ind")),
+                                    # tabPanel("Correlation Plot",
+                                    #          plotOutput("plot_cor")),
+                                    # tabPanel(" Contributions Plot",
+                                    #          plotOutput("plot_con")),
+                                    # tabPanel("Individual Plot",
+                                    #          plotOutput("plot_ind")),
                                     tabPanel("Biplot",
                                              plotOutput("plot_bi")),
                                     tabPanel("Clustering",
@@ -500,41 +501,41 @@ server <- function(input, output){
     })
     
     #cor plot
-    output$plot_cor<- renderPlot({
-        df_1<-df.num%>%select(input$var)
-        res.pca <- prcomp(na.omit(df_1), scale = T)
-        var <- get_pca_var(res.pca)
-        corrplot(var$cos2, is.corr=FALSE)
-    })
+    # output$plot_cor<- renderPlot({
+    #     df_1<-df.num%>%select(input$var)
+    #     res.pca <- prcomp(na.omit(df_1), scale = T)
+    #     var <- get_pca_var(res.pca)
+    #     corrplot(var$cos2, is.corr=FALSE)
+    # })
     # contribution plot
-    output$plot_con<- renderPlot({
-        df_1<-df.num%>%select(input$var)
-        res.pca <- prcomp(na.omit(df_1), scale = T)
-        # Contributions of variables to PC1
-        p1<-fviz_contrib(res.pca, choice = "var", axes = 1, top = 10)
-        # Contributions of variables to PC2
-        p2<-fviz_contrib(res.pca, choice = "var", axes = 2, top = 10)
-        
-        plot_grid(p1, p2, labels = "AUTO")
-    })
+    # output$plot_con<- renderPlot({
+    #     df_1<-df.num%>%select(input$var)
+    #     res.pca <- prcomp(na.omit(df_1), scale = T)
+    #     # Contributions of variables to PC1
+    #     p1<-fviz_contrib(res.pca, choice = "var", axes = 1, top = 10)
+    #     # Contributions of variables to PC2
+    #     p2<-fviz_contrib(res.pca, choice = "var", axes = 2, top = 10)
+    #     
+    #     plot_grid(p1, p2, labels = "AUTO")
+    # })
     #ind plot
-    output$plot_ind<- renderPlot({
-        df_1<-df.num%>%select(input$var)
-        res.pca <- prcomp(na.omit(df_1), scale = T)
-        fviz_pca_ind(res.pca,
-                     col.ind = "cos2", # Color by the quality of representation
-                     gradient.cols = c("#00AFBB", "#E7B800", "#FC4E07"),
-                     repel = T     # Avoid text overlapping
-        ) +xlim(-9,6)+ylim(-2,2)
-    })
+    # output$plot_ind<- renderPlot({
+    #     df_1<-df.num%>%select(input$var)
+    #     res.pca <- prcomp(na.omit(df_1), scale = T)
+    #     fviz_pca_ind(res.pca,
+    #                  col.ind = "cos2", # Color by the quality of representation
+    #                  gradient.cols = c("#00AFBB", "#E7B800", "#FC4E07"),
+    #                  repel = T     # Avoid text overlapping
+    #     ) +xlim(-9,6)+ylim(-2,2)
+    # })
     #bi plot plot
     output$plot_bi<- renderPlot({
         df_1<-df.num%>%select(input$var)
         res.pca <- prcomp(na.omit(df_1), scale = T)
         fviz_pca_biplot(res.pca, repel = TRUE, select.var = list(contrib =7),
                         geom = c("text","point"),
-                        col.var = "#2E9FDF", # Variables color
-                        col.ind = "#696969"  # Individuals color
+                        col.var = "#00AFBB", # Variables color
+                        col.ind = "#FC4E07" # Individuals color
         )
     })
     #clusteirn
