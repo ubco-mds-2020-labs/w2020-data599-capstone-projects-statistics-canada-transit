@@ -57,6 +57,7 @@ efficiency_type <- c('Continuous', 'Discrete')
 day_factor <- c('Friday', 'Saturday', 'Sunday')
 
 
+
 ui <- shinyUI(
    # add_busy_spinner(spin = "fading-circle"),
     navbarPage("Vancouver Transit Accessibility to Cultural Amenities",
@@ -66,7 +67,7 @@ ui <- shinyUI(
                            tabPanel("Score Percentile Measures", 
                                     div(class="outer",
                                         tags$head(includeCSS("styles/styles.css"), includeScript("styles/gomap.js")), # styles
-                                        htmlOutput('map_sco'), # leaflet html map
+                                        htmlOutput('map_sco',), # leaflet html map
                                         absolutePanel(id = "title", class = "panel panel-default",
                                                       top = 20, left = 65, right = "auto", bottom = "auto",
                                                       width = "auto", height = "auto",
@@ -226,9 +227,13 @@ ui <- shinyUI(
                         ),
                         plotOutput("subdivision_violin_plot", click = "plot_click")
                ),
+               
+            #   style="position: absolute; top: 0; right: 0; bottom: 0: left: 0;",
+            #   width='100%', height='100%')
+               
                tabPanel('About this Project',
                         tags$div(style="margin: auto;padding-right: 80px;padding-left: 60px;",
-                                 tags$img(src = "headerlogo.png", style="max-width:100%;max-height:80%;"),
+                               tags$img(src = "headerlogo.png",style="max-width:100%;width:100%; height: auto"),
                             tags$h2("Welcome!",style=" font-family:Papyrus, serif;"),
                             
                             tags$text("The dashboard serves as a supplement tool  
@@ -371,6 +376,8 @@ server <- function(input, output){
         return(glue('/{html_file}.html'))
     })
 
+ #   style="max-width:100%;width:100%; height: auto",
+    
     # this is where the resource path names are used
     # dynamic file calling
     output$map_sco <- renderUI({

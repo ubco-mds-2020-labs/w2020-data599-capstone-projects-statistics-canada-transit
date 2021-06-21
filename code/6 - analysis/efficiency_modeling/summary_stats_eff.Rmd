@@ -188,7 +188,7 @@ GVA_rbind %>%
         axis.title.y = element_blank(),
         axis.text.y = element_blank(),
         axis.ticks.y = element_blank()) +
-  geom_vline(xintercept = 0)
+  geom_vline(xintercept = 0, colour = "Red", size  = 1)
   
 ggsave('Violin Score Distributions.png', width = 8, height = 8)
 
