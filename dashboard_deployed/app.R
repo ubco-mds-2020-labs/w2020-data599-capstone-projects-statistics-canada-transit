@@ -15,12 +15,12 @@ library(ggplot2)
 
 # for unpuervised learning page
 library(cluster)
-#library(FactoMineR)
+library(FactoMineR)
 library(shinyalert)
-#library(factoextra)
+library(factoextra)
 
 # corr plot
-#library("cowplot")
+library("cowplot")
 library("corrplot")
 
 #  import data
@@ -68,7 +68,7 @@ ui <- shinyUI(
                            tabPanel("Score Percentile Measures", 
                                     div(class="outer",
                                         tags$head(includeCSS("styles/styles.css"), includeScript("styles/gomap.js")), # styles
-                                        htmlOutput('map_sco',), # leaflet html map
+                                        htmlOutput('map_sco'), # leaflet html map
                                         absolutePanel(id = "title", class = "panel panel-default",
                                                       top = 20, left = 65, right = "auto", bottom = "auto",
                                                       width = "auto", height = "auto",draggable = TRUE,
@@ -211,26 +211,33 @@ ui <- shinyUI(
                                              plotOutput("plot_cluster"))
                                 )))
                ),
-               tabPanel("Data Explorer",
-                        tabPanel("summary_statistics", DT::dataTableOutput("summary_table")),
-                        
-                        # Create a new Row in the UI for selectInputs
-                        fluidRow(
-                            column(4,
-                                    selectInput("weights",
-                                                "Weights:",
-                                                choices=c("Yes"="yes","No"="no"),
-                                                selected = "Yes")
-                            ),
-                            column(4,
-                                    selectInput(inputId="nearest",
-                                                label="Access to:",
+               tabPanel("Data Explorer", width = 12,
+                        tags$div(style="margin: 20px; width: 80%"),
+                        fluidRow(column(titlePanel("Welcome to the Data Explorer"), width = 4, offset = 1)),
+                        hr(),
+                        fluidRow(align = "left",
+                            column(6, offset = 1, tags$h4("Click on rows in the data table to view accessibility distributions of that particular Vancouver City Subdivision.")),
+                            column(2, offset = 1, 
+                                   selectInput("weights", "Weights:",
+                                               choices=c("Yes"="yes","No"="no"),
+                                               selected = "Yes"),
+                                   selectInput(inputId="nearest", label="Access to:",
                                                 choices=c("All Amenities" = "avg_time_to_any_amenity",
                                                           "Nearest Amenity" = "time_to_nearest_amenity"),
-                                                selected = "All Amenities")
-                            )
+                                               selected = "All Amenities"))
                         ),
-                        plotOutput("subdivision_violin_plot", click = "plot_click")
+                        hr(),
+                        fluidRow(align = "center",
+                            column(width = 9, offset = 1,
+                                   tabPanel("summary_statistics",
+                                             DT::dataTableOutput("summary_table"),
+                                             width = '95%'),
+                                   hr(),
+                                   plotOutput("subdivision_violin_plot", click = "plot_click",
+                                   width = '100%', height = '600px')
+                            )
+                        ), 
+                        
                ),
                
             #   style="position: absolute; top: 0; right: 0; bottom: 0: left: 0;",
@@ -346,7 +353,6 @@ server <- function(input, output){
         return(glue('/{html_file}.html'))
     })
     
-    
     getKepler_map <- reactive({ 
         amn_name <- input$type_kep
         html_file <-  glue('{amn_name} Score Kepler')
@@ -366,13 +372,6 @@ server <- function(input, output){
         html_file <-  glue('{efficiency} Efficiency - stops({stop})')
         return(glue('/{html_file}.html'))
     })
-
-    # getKepler_time <- reactive({ 
-    #     amn_name <- input$type_kep_time
-    #     #day <- input$day_kep
-    #     html_file <-  glue('{amn_name} time Friday')
-    #     return(glue('/{html_file}.html'))
-    # })
     
     getKepler_time <- reactive({ 
         amn_name <- input$type_kep_time
@@ -458,7 +457,7 @@ server <- function(input, output){
                        x = avg_score_to_nearest_amenity)) +
             geom_violin(aes(fill = subdiv), scale = 'width', alpha = 0.4, draw_quantiles = c(0.5), size = 0.5) + 
             scale_fill_discrete(breaks = legend_ord_score) +
-            scale_x_continuous("Average Accessibility Score",limits = c(0, 0.3), breaks=c(0,0.1,0.2,0.3)) +
+            scale_x_continuous("Average Score to Nearest Amenity",limits = c(0, 0.3), breaks=c(0,0.1,0.2,0.3)) +
             guides(fill= guide_legend(title = 'Subdivision')) +
             theme_minimal() +
             theme(aspect.ratio = 1,
@@ -483,7 +482,7 @@ server <- function(input, output){
                        x = selected_column)) +
             geom_violin(aes(fill = subdiv), scale = 'width', alpha = 0.4, draw_quantiles = c(0.5), size = 0.5) +
             scale_fill_discrete(breaks = legend_ord_time) +
-            scale_x_continuous("Average Time in Minutes") +
+            scale_x_continuous(paste0(input$nearest, " (minutes)")) +
             guides(fill = guide_legend(title = 'Subdivision')) +
             theme_minimal() +
             theme(aspect.ratio = 1,
