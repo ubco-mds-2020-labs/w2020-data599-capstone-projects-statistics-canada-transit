@@ -61,8 +61,8 @@ library("corrplot")
 
 #### 2) Import the dataset
 ```{R}
-df_pca<-fread(file.path('../../data/clean', '/pca_data.csv'))
-
+#df_pca<-fread(file.path('../../data/clean', '/pca_data.csv'))
+df_pca<-fread(file.path('../../../data/3_computed', '/unsupervised_data.csv'))
 ```
 
 
@@ -74,9 +74,9 @@ df_pca<-fread(file.path('../../data/clean', '/pca_data.csv'))
 
 
 
-df_pca<-data.frame(column_to_rownames(df_pca, var = "NAME"))
+df_pca<-data.frame(column_to_rownames(df_pca, var = "V1"))
 df.num<-df_pca%>%select(where(is.numeric))
-df.num<-df.num[-1]
+
 
 
 ```
