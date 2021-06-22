@@ -125,6 +125,15 @@ all_data %>%
 ```
 
 
+```{r}
+x <- all_data$avg_time_to_any_amenity
+percentile_nearest <- ecdf(x)
+
+percentile_nearest(60)
+
+```
+
+
 ## Checking Block Distribution by Subdivision
 ```{r}
 
