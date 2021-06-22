@@ -13,13 +13,16 @@ Place your weekly status updates in this folder before your weekly meeting.
 - This way we can see all the work being done in 1 file, not 4.
 
 ***
+### Week 8 (June 20 - June 22)
+- Report writing/presentation/rehearsal (Graham) - 12+ hours
+- Adhoc dashboard task (Graham) - 8 hours
 
-### Week 8 (June 21 - June 25)
+### Week 7 (June 12 - June 19)
 - Changed effiency model and maps (Graham) - 8 hours
-- Report writing (Graham) - 8 hours
+- Report writing/presentation (Graham) - 12 + hours
 
 ### Week 6 (June 7 - June 11)
-- Developed final effiency model and maps (Graham) - 16 hours
+- Developed effiency model and maps (Graham) - 16 hours
 - Experimented efficiency models via the difference in population quantiles / score quantiles (Luka) - 3 hours
 - Added geometry for locations of amenities on the Kepler.gl maps (Rain) - 6 hours
 - Wrote background, methodology for UrbanAccess with Pandana, and Kepler.gl (Rain) - 8 hours
