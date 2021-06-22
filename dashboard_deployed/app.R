@@ -7,8 +7,6 @@ library(DT)
 library(ggpubr)
 library(ggplot2)
 library(dplyr)
-library(tibble)
-#library(readr) caused problems
 
 # for unpuervised learning page # all caused problems
 #library(cluster)
