@@ -5,25 +5,24 @@ library(stringr)
 # for data table page
 library(DT)
 library(ggpubr)
-library(dplyr)
 library(ggplot2)
+library(dplyr)
 library(tibble)
-library(tidyverse)
-library(readr)
+#library(readr) caused problems
 
-# for unpuervised learning page
-library(cluster)
-library(FactoMineR)
-library(factoextra)
+# for unpuervised learning page # all caused problems
+#library(cluster)
+#library(FactoMineR)
+#library(factoextra)
 
 
 
 #  import data
 all_ams <- read.csv("datatable/all_data.csv")[,-c(1,2)]  # ams = accessibility measures
-sumstat_df <- read_csv("datatable/summary_statistics_by_city.csv")[,-1]
-df_pca <- read.csv("datatable/pca_data.csv")
-df_pca <- data.frame(column_to_rownames(df_pca, var = "X"))
-df.num <- df_pca %>% select(where(is.numeric))
+sumstat_df <- read.csv("datatable/summary_statistics_by_city.csv")[,-1]
+#df_pca <- read.csv("datatable/pca_data.csv")
+#df_pca <- data.frame(column_to_rownames(df_pca, var = "X"))
+#df.num <- df_pca %>% select(where(is.numeric))
 
 
 #df_pca<-fread(file.path('../../../data/3_computed', '/unsupervised_data.csv'))
@@ -150,7 +149,7 @@ ui <- shinyUI(
                                        absolutePanel(id = "title", class = "panel panel-default",
                                                      top = 20, left = 65, right = "auto", bottom = "auto",
                                                      width = "auto", height = "auto",draggable = TRUE,
-                                                     h2('Comparison Map for Weekend/Weekday Scores')),
+                                                     h2('Comparison Map for Weekend/Weekday Transit Times')),
                                        
                                        absolutePanel(id = "controls", class = "panel panel-default",
                                                      fixed = TRUE, draggable = TRUE,
@@ -181,35 +180,35 @@ ui <- shinyUI(
                           )
                           
                ),
-               tabPanel("Unsupervised Analysis",
-                    fluidPage(align = "center",
-                        tags$div(style="margin: 20px; width: 95%; height: 95%",
+            #    tabPanel("Unsupervised Analysis",
+            #         fluidPage(align = "center",
+            #             tags$div(style="margin: 20px; width: 95%; height: 95%",
                      
-                            sidebarPanel(width = 4,
-                                selectInput("var","Select Variables:",
-                                            choices = colnames(df.num),
-                                            multiple = T,
-                                            selected=colnames(df.num))
-                            ),
-                            mainPanel(width = 8,
-                                tabsetPanel(
-                                    tabPanel("Clustering",
-                                             plotOutput("plot_cluster", height = '700px')),
-                                    tabPanel("Scree Plot",
-                                             plotOutput("plot_scree", height = '700px')),
-                                    tabPanel("Biplot",
-                                             plotOutput("plot_bi", height = '700px'))
-                                    # tabPanel("Correlation Plot",
-                                    #          plotOutput("plot_cor")),
-                                    # tabPanel(" Contributions Plot",
-                                    #          plotOutput("plot_con")),
-                                    # tabPanel("Individual Plot",
-                                    #          plotOutput("plot_ind")),
-                                )
-                            )
-                        )
-                    )
-               ),
+            #                 sidebarPanel(width = 4,
+            #                     selectInput("var","Select Variables:",
+            #                                 choices = colnames(df.num),
+            #                                 multiple = T,
+            #                                 selected=colnames(df.num))
+            #                 ),
+            #                 mainPanel(width = 8,
+            #                     tabsetPanel(
+            #                         tabPanel("Clustering",
+            #                                  plotOutput("plot_cluster", height = '700px')),
+            #                         tabPanel("Scree Plot",
+            #                                  plotOutput("plot_scree", height = '700px')),
+            #                         tabPanel("Biplot",
+            #                                  plotOutput("plot_bi", height = '700px'))
+            #                         # tabPanel("Correlation Plot",
+            #                         #          plotOutput("plot_cor")),
+            #                         # tabPanel(" Contributions Plot",
+            #                         #          plotOutput("plot_con")),
+            #                         # tabPanel("Individual Plot",
+            #                         #          plotOutput("plot_ind")),
+            #                     )
+            #                 )
+            #             )
+            #         )
+            #    ),
 
                tabPanel("Data Explorer", width = 12,
                         tags$div(style="margin: 20px; width: 80%"),
@@ -421,7 +420,7 @@ server <- function(input, output){
         rows_selected = input$summary_table_rows_selected
         
         # keep subdivisions in selected rows
-        cities_to_keep <- sumstat_df[rows_selected, 1]$subdiv
+        cities_to_keep <- sumstat_df[rows_selected, 1]#$subdiv
         filtered_ams <- all_ams %>%
             filter(subdiv %in% cities_to_keep & weight == input$weights)
         
@@ -474,37 +473,37 @@ server <- function(input, output){
         ggarrange(score_plot, time_plot)
     })
     
-    #clusteirn
-    output$plot_cluster<- renderPlot({
-        df_1<-df.num%>%select(input$var)
-        df_1<- scale(df_1)
-        # Compute k-means using 4 clusters
-        set.seed(123)
-        km.res <- kmeans(df_1, 4, nstart = 25)
-        # Plot the k-means clustering
-        fviz_cluster(km.res, df_1)+theme_minimal()
+    # #clusteirn
+    # output$plot_cluster<- renderPlot({
+    #     df_1<-df.num%>%select(input$var)
+    #     df_1<- scale(df_1)
+    #     # Compute k-means using 4 clusters
+    #     set.seed(123)
+    #     km.res <- kmeans(df_1, 4, nstart = 25)
+    #     # Plot the k-means clustering
+    #     fviz_cluster(km.res, df_1)+theme_minimal()
         
-    })
+    # })
     
-    #bi plot plot
-    output$plot_bi<- renderPlot({
-        df_1<-df.num%>%select(input$var)
-        res.pca <- prcomp(na.omit(df_1), scale = T)
-        fviz_pca_biplot(res.pca, repel = TRUE, select.var = list(contrib =7),
-                        geom = c("text","point"),
-                        col.var = "#00AFBB", # Variables color
-                        col.ind = "#FC4E07" # Individuals color
-                        )
-        })
+    # #bi plot plot
+    # output$plot_bi<- renderPlot({
+    #     df_1<-df.num%>%select(input$var)
+    #     res.pca <- prcomp(na.omit(df_1), scale = T)
+    #     fviz_pca_biplot(res.pca, repel = TRUE, select.var = list(contrib =7),
+    #                     geom = c("text","point"),
+    #                     col.var = "#00AFBB", # Variables color
+    #                     col.ind = "#FC4E07" # Individuals color
+    #                     )
+    #     })
     
-    # scree
-    output$plot_scree<- renderPlot({
-        df_1<-df.num%>%select(input$var)
-        res.pca <- prcomp(na.omit(df_1), scale = T)
-        #res.pca<-prcomp(df.st,scale = T)
-        eig.val <- get_eigenvalue(res.pca)
-        fviz_eig(res.pca, addlabels = TRUE, ylim = c(0, 70))
-    })
+    # # scree
+    # output$plot_scree<- renderPlot({
+    #     df_1<-df.num%>%select(input$var)
+    #     res.pca <- prcomp(na.omit(df_1), scale = T)
+    #     #res.pca<-prcomp(df.st,scale = T)
+    #     eig.val <- get_eigenvalue(res.pca)
+    #     fviz_eig(res.pca, addlabels = TRUE, ylim = c(0, 70))
+    # })
     
     #cor plot
     # output$plot_cor<- renderPlot({
