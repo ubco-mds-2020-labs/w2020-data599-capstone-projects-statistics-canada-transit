@@ -16,10 +16,13 @@ Place your weekly status updates in this folder before your weekly meeting.
 ### Week 8 (June 20 - June 22)
 - Report writing/presentation/rehearsal (Graham) - 12+ hours
 - Adhoc dashboard task (Graham) - 8 hours
-
+- Add data explor tab (Yuxuan) -4 hours
+- Add Clustering tabs (Yuxuan) -3 hours
 ### Week 7 (June 12 - June 19)
 - Changed effiency model and maps (Graham) - 8 hours
 - Report writing/presentation (Graham) - 12 + hours
+- Report writing/presentation (Yuxuan) - 12 + hours
+- PCA analysis (Yuxuan) - 10 hour
 
 ### Week 6 (June 7 - June 11)
 - Developed effiency model and maps (Graham) - 16 hours
