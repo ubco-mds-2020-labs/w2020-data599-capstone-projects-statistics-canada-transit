@@ -1,4 +1,4 @@
-#Proposal 
+# Proposal folder
 
-The folder contains your proposal, research questions and statement of work.
+Contains the report for the proposal.
 
