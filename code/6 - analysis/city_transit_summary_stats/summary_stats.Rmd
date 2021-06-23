@@ -8,6 +8,8 @@ library(data.table)
 library(tidyverse)
 library(readr)
 library(ggplot2)
+library(fmsb)
+
 
 path_data <- "../../../data/"
 
@@ -36,12 +38,14 @@ scores <- fread(file.path(paste0(path_data, "3_computed/accessibility_measures/s
 scores$fromId <- as.character(scores$fromId)
 
 
+# create one big frame with populations 
 all_data <- left_join(origins, scores, by = c('id' = 'fromId'))
 all_data <- left_join(all_data, TTM, by = c('id' = 'fromId'))
 
 # remove NAs
 #all_data$avg_score_to_nearest_amenity[is.na(all_data$avg_score_to_nearest_amenity)] <- 0.001
 
+# optionally save it
 #write.csv(all_data,"all_data.csv")
 
 ```
@@ -49,7 +53,6 @@ all_data <- left_join(all_data, TTM, by = c('id' = 'fromId'))
 
 ```{r}
 # NEAREST SCORE
-
 all_data %>%
   ggplot(aes(x = avg_score_to_nearest_amenity)) +
   geom_density(size = 1) +
@@ -67,8 +70,6 @@ all_data %>%
 
 
 # NEAREST PERCENTILE SCORE
-library(fmsb)
-
 # convert to percentiles
 all_data$score_percentile <- percentile(all_data$avg_score_to_nearest_amenity)/100
 
@@ -126,6 +127,8 @@ all_data %>%
 
 
 ```{r}
+
+# check 60 minute percentiles for average time
 x <- all_data$avg_time_to_any_amenity
 percentile_nearest <- ecdf(x)
 
@@ -174,6 +177,23 @@ all_data_small %>%
 
 
 ```
+
+## Summary Statistics on Vancouver Subdivisions
+
+```{r}
+summary_stats <- all_data_small %>%
+  group_by(subdiv) %>%
+  summarize(mean_score_nearest_amenity = mean(avg_score_to_nearest_amenity, na.rm = T),
+            sd_score_nearest_amenity = sd(avg_score_to_nearest_amenity, na.rm = T),
+            mean_time_nearest_amenity = mean(time_to_nearest_amenity, na.rm = T),
+            sd_time_nearest_amenity = sd(time_to_nearest_amenity, na.rm = T),
+            mean_time_all_amenity = mean(avg_time_to_any_amenity, na.rm = T),
+            sd_time_all_amenity = sd(avg_time_to_any_amenity, na.rm = T))
+
+write.csv(summary_stats, '../../../data/3_computed/summary_statistics_by_city.csv')
+
+```
+
 
 
 
@@ -335,23 +355,6 @@ all_data_small %>%
         axis.ticks.y = element_blank())
 
 #ggsave('Overlaid time to all amenities distributions.png', width = 8, height = 8)
-
-```
-
-
-## Summary Statistics on Vancouver Subdivisions
-
-```{r}
-summary_stats <- all_data_small %>%
-  group_by(subdiv) %>%
-  summarize(mean_score_nearest_amenity = mean(avg_score_to_nearest_amenity, na.rm = T),
-            sd_score_nearest_amenity = sd(avg_score_to_nearest_amenity, na.rm = T),
-            mean_time_nearest_amenity = mean(time_to_nearest_amenity, na.rm = T),
-            sd_time_nearest_amenity = sd(time_to_nearest_amenity, na.rm = T),
-            mean_time_all_amenity = mean(avg_time_to_any_amenity, na.rm = T),
-            sd_time_all_amenity = sd(avg_time_to_any_amenity, na.rm = T))
-
-write.csv(summary_stats, '../../../data/3_computed/summary_statistics_by_city.csv')
 
 ```
 

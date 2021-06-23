@@ -1,23 +1,29 @@
-## PROJECT CUSTOM FUNCTIONS
-# This file stores many base functions used for the project
-# These include scoring, mapping, wrangling, and normalization functions
-# Developers: Luka, Rain, Graham, Yuxuan
+## CUSTOM PROJECT FUNCTIONS
+# This file stores base functions used for the project
+# These include functions for scoring, mapping, wrangling, and data normalization 
+# Developers: Luka Vukovic, Rain Shen, Graham Kerford, Yuxuan Cui
 
-##############################
+
+############################################################
 ## NORMALIZATION FUNCTIONS
-##############################
+############################################################
 
-# Normalize vector to a custom range [x,y]
-
+# Normalizes a vector to a custom range [x,y] with log normalization as an option
+# Default normalization range is 0.01 to 0.99 to avoid zero division in later functions.
+# Input is a numeric vector 
+# Output is a normalized numeric vector
 normalize_vec <- function(vec, x = 0.01, y = 0.99, log = FALSE) {
+  
   if (log == TRUE) { vec <- log(vec) }
   norm_v <- (vec - min(vec))/(max(vec) - min(vec))
   custom_norm_v <- norm_v*(y - x) + x
   custom_norm_v
 }
 
-# Normalize all numeric columns in a dataframe to a custom range [x,y]
-
+# Normalize all numeric columns in a dataframe to a custom range [x,y] with log normalization as an option
+# Default normalization range is 0.01 to 0.99 to avoid zero division in later functions.
+# Input is a dataframe 
+# Output is a dataframe with numeric columns normalized
 normalize_df <- function(df, x = 0.01, y = 0.99, log = FALSE) {
   num_cols <- which(sapply(df, is.numeric)) # numeric columns
   normed <- sapply(df[num_cols], normalize_vec, x = x, y = y, log = log)
@@ -26,14 +32,19 @@ normalize_df <- function(df, x = 0.01, y = 0.99, log = FALSE) {
 }
 
 
-##############################
-## SCORING FUNCTIONS
-##############################
+############################################################
+## SCORING FUNCTIONS (Transit Accessibility Measure)
+############################################################
 
 # Transit Accessibility Measure Scoring Function
-# It takes the inverse of the "worst case" trip time from 1 point to the
-# nearest 1, 2, 3, ... , n amenities.
-#  score SUM [i..n] (1/(mean_traveltime_i + 2*std_traveltime_j) + 1/...  + 1/...   ...))
+# Input: a dataframe with columns: avg_time, sd_time, and optionally weights
+# output: a new dataframe that includes the accessibility score.
+# The score is the inverse of the "worst case" trip time from 1 point to the
+# nearest 1, 2, 3, ... , n amenities depending on how many amenities you want to consider.
+# The score could optionally include weights for each amenity and be
+# log normalized to correct skewness in the distribution. Users may also set
+# what range they want the score to be in by specifying x and y values which are defaulted to 0.01 and 0.99
+# The score equation is: SUM [i..n] (1/(mean_traveltime_i + 2*std_traveltime_j) + 1/...  + 1/...   ...))
 
 sum_score_fxn <- function(df, nearest_n = NULL, weight = FALSE, log_normalize_score = FALSE, x = 0.01, y = 0.99) {
 
@@ -69,7 +80,6 @@ sum_score_fxn <- function(df, nearest_n = NULL, weight = FALSE, log_normalize_sc
   # sum the scores and normalize
   # if nearest_n == 1 the results will not change
   df <- df %>% 
-    
     # group on unique trips and amenity types
     group_by(fromId, type) %>% 
     
@@ -88,20 +98,20 @@ sum_score_fxn <- function(df, nearest_n = NULL, weight = FALSE, log_normalize_sc
 }
 
 
-##############################
+############################################################
 ## NA SUBSTITUTION FUNCTIONS
-##############################
+############################################################
 
 # Expands a grid of NA values based on the factors of missing values in a dataframe.
 # This is useful if you want NA values regions to be represented on a map.
 # For example, each origin ID expects 32 values, but in many cases only 8 or 16
 # are present. In that case we would expand a grid using the missing factors to
 # reincorporate those NA values into the frame. 
+# Input: vector of row IDs that need NAs
+# Output: Rows with the ID and NA values under the factors.
 
 NA_grid_maker <- function(id, df, frame_type) {
 
-  
-  
   # create NA rows to append via expand.grid (creates a row for every factor combination)
   if (frame_type == 'efficiency') {
 
@@ -134,10 +144,13 @@ NA_grid_maker <- function(id, df, frame_type) {
 
 }
 
-# Function that calls on the grid expander and performs the filling or addition
-# of NA valued rows. Custom idx is for adding values not in the original frame,
-# otherwise values that dont meet expected occurence are filled.
-# frame_types can be c('score', 'isochrone', 'efficiency')
+# Function that calls on grid expander and fills the dataframe with NA values where
+# there needs to be a equal number of rows for each ID.
+# Users must specify the frame_type since our code is structured for 3 different frames:
+# c('efficiency', 'score', and 'isochrone')
+# A vector of Custom IDs (custom_idx) can be optionally specified for adding ID
+# values not found in the original frame, otherwise NAs are only filled
+# for ID values existing in the dataframe.
 
 NA_table_filler <- function(df, custom_idx = NULL, frame_type) {
   
@@ -181,10 +194,20 @@ NA_table_filler <- function(df, custom_idx = NULL, frame_type) {
   df
 }
 
-# a function that checks how many rows are missing in a given accessibility measure data frane
-# and returns the IDs that are missing in an array called missing_blocks
 
-check_rows <- function(check_frame, origins_frame, rows_per_dissemination_block, frame_type) {
+# A function that checks how many rows are missing in a given accessibility measure data frane
+# and returns the IDs that are missing in an array called missing_blocks.
+# The missing blocks output object is a vector of IDs that is typically input as
+# as custom index to the Na_table_filler function. Otherwise, this simply performs
+# a user friendly check to see if values are missing.
+# Input: A frame with a `fromId` column for all origin IDs,
+# a frame containing the original IDs in an `id` column,
+# how many rows each ID should have (depends on your factors, for example,
+# if you have 2 factors with 3 options this values needs to be 6 = 2*3 so there are 6 rows for each ID),
+# and the frame_type which can be optionally specified.
+# Output: vector of missing IDs from the original frame and print information on what % of values are missing.
+
+check_rows <- function(check_frame, origins_frame, rows_per_dissemination_block, frame_type = 'Frame type not specified') {
   
   print(paste(frame_type))
   cat(paste0('\n')) # line break
@@ -209,14 +232,14 @@ check_rows <- function(check_frame, origins_frame, rows_per_dissemination_block,
 }
 
 
-##############################
+############################################################
 ## RUNNING AVERAGE FUNCTIONS
-##############################
+############################################################
 
-## CHECK1 i'm not sure if 0.0675 is really 500m, it seems more like it's 7km??
+
+# Function that calculates the mean traffic count within 0.0675 degrees of each block in Vancouver, Canada
+## CHECK1 i'm not sure if 0.0675 is really 5000m, it seems more like it's 7km??
 ## CHECK2 i'm not sure if the function should be calling on a global object. Can we make it more "functional" by nature?
-
-# Function that calculates the mean traffic count within 500m of each block
 
 db_trafic <- function(row){
   mean(filter(traffic_data,
@@ -227,11 +250,10 @@ db_trafic <- function(row){
 }
 
 
-# Iterate Through each row
-# Get the most recent traffic survey for each row
+# Function that iterates Through each row of a sparsly filled traffic information dataframe,
+# and returns the most recent traffic information.
 
 is_NA <- function(row, col = 21) {
-
   if (is.na(row[col+3]) & col>0) {
     is_NA(row = row, col = col-1)
   } else if (col == 0 ){
@@ -241,16 +263,20 @@ is_NA <- function(row, col = 21) {
   }
 }
 
+# Used with apply statements to parse sparsely filled traffic dataframes
+
 getAll_Data <- function(row){
   is_NA(row)
 }
 
 
-##############################
+############################################################
 ## VISUALIZATION FUNCTIONS
-##############################
+############################################################
 
-# function to plot 2 score set distributions by type for exploratory comparison
+# Function to plot 2 score set distributions by type for exploratory comparison
+# Input: two accessibility measures score frames, and optional figure titles
+# Output: Two density plots comparing the distribution of scores
 
 plot_densities <- function(score_frame1, score_frame2, titl1 = 'Plot 1', titl2 = 'Plot 2') {
   x <- score_frame1 %>%
@@ -269,7 +295,21 @@ plot_densities <- function(score_frame1, score_frame2, titl1 = 'Plot 1', titl2 =
 }
 
 
-# Mapping function for score tables
+## MAP MAKER FUNCTIONS
+# We have 3 primary map maker functions. These use leaflet to generate choropleths for difference accessibility measrues.
+# All functions by default output the map to the working directory, to turn this off set view_map to TRUE
+# and it will be displayed in R instead of being saved.
+
+# Score map maker:
+# Input: data (dataframe) with columns $score, $DBUID (dissemination block unique ID), $pop (block population), $type (amenity type), $weight (amenity weight), $nearest_n (how many amenities to consider),
+# bus_data (coordinates of bus stops),
+# amenity (which amenity type to consider in the map. Value must exist in the $type column),
+# weight (whether to include weights, Yes/No. Value must exist in the $weight column),
+# nearest_n (how many amenities to consider.Value must exist in the $nearest_n column),
+# add_stop = TRUE or FALSE, whether to plot the stop coordinates
+# output directory = where to save the renderd map (only if vew_map == FALSE)
+
+# Output: rendered html map (when view == FALSE)
 
 map_maker_scores <- function(data, bus_data, amenity, weight, nearest_n, add_stop, output_dir, view_map = FALSE) {
   
@@ -337,8 +377,16 @@ map_maker_scores <- function(data, bus_data, amenity, weight, nearest_n, add_sto
 
 
 
-# Mapping function for isochrone tables
+# Isochrone map maker:
+# Input: data (dataframe) with columns $type (amenity types), $weight (amenity weights), $nearest_n (how many amenities to consider),
+# bus_data (coordinates of bus stops),
+# amenity (which amenity type to consider in the map. Value must exist in the $type column),
+# weight (whether to include weights, Yes/No. Value must exist in the $weight column),
+# nearest_n (how many amenities to consider.Value must exist in the $nearest_n column),
+# add_stop = TRUE or FALSE, whether to plot the stop coordinates
+# output directory = where to save the renderd map (only if vew_map == FALSE)
 
+# Output: rendered html map (when view == FALSE)
 map_maker_isochrone <- function(data, bus_data, amenity, add_stop, output_dir, view_map = FALSE) {
   
   amn_name <- amenity %>%
