@@ -14,23 +14,56 @@ Place your weekly status updates in this folder before your weekly meeting.
 
 ***
 ### Week 8 (June 20 - June 22)
-- Report writing/presentation/rehearsal (Graham) - 12+ hours
-- Adhoc dashboard task (Graham) - 8 hours
-- Add data explor tab (Yuxuan) -4 hours
-- Add Clustering tabs (Yuxuan) -3 hours
+- Code documentation and Readmes (All) - 5 hours
+- Changed efficiency model and maps (Graham) - 8 hours
+- Report writing (All) - 20 hours each
+- Presentation (All) - 15 hours
+- Fixed dashboard layout/display (Graham) - 2 hours
+- Deployed a cut down version of the dashboard via heroku (Luka) - 7 hours
+- Worked on deploying the full dashboard on heroku (Luka) - 12 hours
+- Added draggable titles and page descriptions to the dashboard (All) - 4 hours
+- Updated on k-mean clustering analysis (Rain) - 2 hours
+- Rearranged the data sets for Kepler.gl time window maps (Rain) - 8 hours
+- Dashboard formatting (Yuxuan)- 5 hours
+
 ### Week 7 (June 12 - June 19)
-- Changed effiency model and maps (Graham) - 8 hours
-- Report writing/presentation (Graham) - 12 + hours
-- Report writing/presentation (Yuxuan) - 12 + hours
-- PCA analysis (Yuxuan) - 10 hour
+- Worked on report writing overall and subdivision analysis (Luka) - 4 hours
+- Created the subdivision accessibility measure summary csv (Luka) - 15 minutes
+- Created ggplot2 violin plot visualizations (Luka + Graham) - 2 hours
+- Deployed preliminary dashboard on heroku (Luka) - 1 hour
+- Fixed small bugs after recomputing the travel time matrix and scores (Luka) - 5 hours
+- Worked on reorganizing some aesthetics of the dashboard about and data explorer page (Luka) - 4 hours
+- Re-rendering html maps for leaflet after each new update (Luka) - 6 hours
+- Analyzed the accessibility measure distributions (Luka) - 3 hours
+- Updated maps popup and created figures folder for report figures (Luka) - 2 hours
+- Directory reorganizing for documentation (Luka) - 4 hours
+- Code merging of all files with similar code (Luka) - 10 hours
+- Code review to complete the efficiency model and visualizations (Graham + Luka) - 4 hours
+- Build data explore tab (Yuxuan) - 8 hours
+- Documenting weight data function(Yuxuan) - 3 hours 
+- Obtain bus frequency data and data cleaning (Yuxuan + Rain)- 5 hours
+- PCA analysis on newly merged transit dataset(Yuxuan) - 8 hours
+- Build unsupervised learning tab (Yuxua)- 3 hours
+- Build About the Project tab and formatting(Yuxuan) - 5 hours
+- Report writing on Isochrone maps/score maps(+ graph making) (Yuxuan)-8 hours
+- Correlation analysis(Yuxuan) - 5 hours
+- Conducted K-means clustering analysis on variables (Rain) - 3 hours
+- Stored the large-scale data on cloud storage to reduce the data load for Kpeler.gl (Rain) - 10 hours
+- Re-arranged data sets for generating Kepler.gl maps and compressed data size (Rain) - 10 hours
+- Data visualization for transit times along with the time of the day, day of the week (Rain) - 3 hours
+- Weekly presentations (All) - 3 hours
+- Changed efficiency model and maps (Graham) - 15 hours
+- Report writing/presentation (Graham & Rain) - 15 hours
+
 
 ### Week 6 (June 7 - June 11)
-- Developed effiency model and maps (Graham) - 16 hours
+- Report writing (All) - 20 hours each
+- Developed first iteration of the efficiency model and maps (Graham) 16 hours
 - Experimented efficiency models via the difference in population quantiles / score quantiles (Luka) - 3 hours
 - Added geometry for locations of amenities on the Kepler.gl maps (Rain) - 6 hours
-- Wrote background, methodology for UrbanAccess with Pandana, and Kepler.gl (Rain) - 8 hours
+- Wrote background, methodology for UrbanAccess with Pandana, and Kepler.gl (Rain) - 10 hours
 - Wrote method-dashboard section of the report (Graham) - 8 hours
-- Wrote introduction, and methods (data, computation, scoring) - 10 hours
+- Wrote introduction, and methods (data, computation, scoring) (Luka) - 10 hours
 - Report formatting on Overleaf using latex (Yuxuan) - 1.5 hours
 - Wrote amenity methodology part (Yuxuan) - 12 hours
 - Recomputed travel time matrix, scores, and fresh HTML maps using the merged code with the most recent scoring function (check to see if all code is still functional) (All) - 6 hours
