@@ -1,6 +1,6 @@
-## Data folder
+# Data folder
 
-# Sub-folders
+## Sub-folders
 
 1) 1_raw
     - Raw, unprossed data
