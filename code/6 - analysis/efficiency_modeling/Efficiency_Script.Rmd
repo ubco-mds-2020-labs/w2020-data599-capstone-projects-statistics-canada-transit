@@ -75,7 +75,7 @@ origins$id <- as.factor(origins$id)
 
 # Get mean accessibility score for each block
 eff_frame <- filter(scores, weight=='no' & nearest_n ==1,)[c(1,3)] %>%
-                          #str_detect(nearest_n, '1') & str_detect(weight, 'no'))[,c(1,3)] %>%
+                          
                    group_by(fromId) %>%
                    summarise(mean_score = mean(score, na.rm = TRUE))
 
@@ -103,7 +103,7 @@ eff_frame
 
 *Here we combine the traffic data*
 
-The 0.065 degrees needs to be checked for its actual distance
+The 0.065 degrees is roughly equal to 5 km in Vancoucer
 
 ```{r}
 

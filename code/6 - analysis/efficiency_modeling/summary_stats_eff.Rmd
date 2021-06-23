@@ -29,11 +29,6 @@ TTM2 <- TTM %>%
 scores <- fread(file.path(paste0(path_data, "3_computed/transit_efficiency/efficiency_frame.csv")))
 scores$fromId <- as.character(scores$fromId)
 
-# aggregate on from Id
-#scores2 <- scores %>% #filter(weight == 'no' & nearest_n == '1') %>%
- #           group_by(fromId) %>%
- #           summarize(efficiency = mean(efficiency))
-
 
 all_data <- left_join(origins, scores, by = c('id' = 'fromId'))
 all_data <- left_join(all_data, TTM2, by = c('id' = 'fromId'))
