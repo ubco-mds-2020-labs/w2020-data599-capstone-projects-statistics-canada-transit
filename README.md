@@ -5,7 +5,7 @@
 ![Vancouver](https://vancouver.ca/images/cov/feature/skytrain-landing.jpg)
 
 Dashboard Link:  
-[Vancouver Transit Accessibility to Cultural Amenities Dashboard] (https://van-transit-access2.herokuapp.com/)
+[Vancouver Transit Accessibility to Cultural Amenities Dashboard] (https://van-transit-access2.herokuapp.com)
 
 **Introduction**
 
