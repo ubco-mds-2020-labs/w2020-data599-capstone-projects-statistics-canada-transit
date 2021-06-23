@@ -1,6 +1,9 @@
 ---
 title: "Travel Time Matrix to Maps"
-output: html_notebook
+output:
+  html_document:
+    df_print: paged
+authors: Luka Vukovic, Yuxuan Cui, Rain Shen
 ---
 
 ## Notebook Purpose
@@ -236,6 +239,7 @@ scores_long <- rbindlist(list(scores_long_weighted, scores_long_unweighted))
 ```
 
 ## 3) Computing Isochrones as Interprettable Scores
+
 ```{r message=FALSE, warning=FALSE}
 
 # only keep the nearest amenity for isochrone categorization

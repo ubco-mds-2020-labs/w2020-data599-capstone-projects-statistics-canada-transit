@@ -1,6 +1,9 @@
 ---
-title: "Travel Time Matrix to Maps"
-output: html_notebook
+title: "Convertins Measures to Maps"
+author: "Luka Vukovic"
+output:
+  html_document:
+    df_print: paged
 ---
 
 ## Notebook Purpose
@@ -138,6 +141,7 @@ efficiency_frame$fromId <- as.factor(efficiency_frame$fromId)
 efficiency_frame_viz <- mapping_data_prepper(vancouver_shape, efficiency_frame,
                                              by = c('DBUID' = 'fromId'))
 
+head(scores_viz_frame)
 ```
 
 ## 2) Interactive Visualization
@@ -155,12 +159,12 @@ efficiency_frame_viz <- mapping_data_prepper(vancouver_shape, efficiency_frame,
 ## 3) Map HTML Exports
 
 **Maps to export:**
-1) Score maps (32)
-2) Isochrone maps (4)
-3) Kepler maps (4) - *performed elsewhere*
-4) Efficiency maps (2)
+  1) Score maps (32)
+  2) Isochrone maps (4)
+  3) Kepler maps (4) - *performed elsewhere*
+  4) Efficiency maps (2)
 
-```{r}
+```{r message=FALSE, warning=FALSE, include=TRUE, eval = FALSE}
 
 source('../0 - custom_functions/functions.R')
 
