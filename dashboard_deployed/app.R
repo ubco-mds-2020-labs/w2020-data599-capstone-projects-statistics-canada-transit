@@ -13,20 +13,17 @@ library(glue)
 #library(FactoMineR)
 #library(factoextra)
 
-
-#  import data
+#  import data for data explorer
 #all_ams <- read.csv("datatable/all_data.csv")[,-c(1,2)]  # ams = accessibility measures
 #sumstat_df <- read.csv("datatable/summary_statistics_by_city.csv")[,-1]
 
-# for pca
+# import data for pca
 #df_pca <- read.csv("datatable/pca_data.csv")
 #df_pca <- data.frame(column_to_rownames(df_pca, var = "X"))
 #df.num <- df_pca %>% select(where(is.numeric))
-
-
 #df_pca<-fread(file.path('../../../data/3_computed', '/unsupervised_data.csv'))
 
-# Directory path
+# Directory paths
 scoremap_dir <- "/maps/score_maps"
 #kepmap_dir <- "/maps/kepler_maps/general"
 isomap_dir <- "/maps/isochrone_maps"
@@ -50,9 +47,8 @@ stops <- c('no', 'yes')
 efficiency_type <- c('Continuous', 'Discrete')
 day_factor <- c('Friday', 'Saturday', 'Sunday')
 
-
+## Primary UI function
 ui <- shinyUI(
-   # add_busy_spinner(spin = "fading-circle"),
     navbarPage("Vancouver Transit Accessibility to Cultural Amenities",
 
                 navbarMenu("Leaflet Accessibility Visualizations", 
@@ -122,6 +118,7 @@ ui <- shinyUI(
 
                navbarMenu("Kepler (3D) Accessibility Visualizations",
                           "----",
+                        # exclude this tab to cut down on data required for the dashboard
                         #   tabPanel("Score Percentile Measures",
                         #            div(class="outer",
                         #                tags$head(includeCSS("styles/styles.css"), includeScript("styles/gomap.js")),
@@ -178,6 +175,8 @@ ui <- shinyUI(
                           )
                           
                ),
+            # excluded since dependency stack takes >15min and fails
+
             #    tabPanel("Unsupervised Analysis",
             #         fluidPage(align = "center",
             #             tags$div(style="margin: 20px; width: 95%; height: 95%",
@@ -207,6 +206,8 @@ ui <- shinyUI(
             #             )
             #         )
             #    ),
+
+            # excluded since dependency stack takes >15min and fails
 
             #    tabPanel("Data Explorer", width = 12,
             #             tags$div(style="margin: 20px; width: 80%"),
@@ -311,14 +312,11 @@ ui <- shinyUI(
 )
 
 
-
+# primary server function for interactivity
 server <- function(input, output){
     
-    output$current_map <- renderText({
-       'Map Title Here'
-    })
+    # functions to get html paths
 
-    # get html path
     getScore_map <- reactive({ 
         amn_name <- input$type_sco
         weight <- input$weight
@@ -326,43 +324,39 @@ server <- function(input, output){
         html_file <- glue("{amn_name} - wt({weight}) - n({nearest_n}) - stops(yes)")
         return(glue('/{html_file}.html'))
     })
-    
     getKepler_map <- reactive({ 
         amn_name <- input$type_kep
         html_file <-  glue('{amn_name} Score Kepler')
         return(glue('/{html_file}.html'))
     })
-    
     getIsochrone_map <- reactive({ 
         amn_name <- input$type_iso
         stop <- input$stop_iso
         html_file <-  glue('{amn_name} - isochrone - stops({stop})')
         return(glue('/{html_file}.html'))
     })
-    
     getEfficiency_map <- reactive({ 
         efficiency <- input$type_eff
         stop <- input$stop_eff
         html_file <-  glue('{efficiency} Efficiency - stops({stop})')
         return(glue('/{html_file}.html'))
     })
-    
     getKepler_time <- reactive({ 
         amn_name <- input$type_kep_time
         html_file <-  "Friday_TimeWindow"
         return(glue('/{html_file}.html'))
     })
-    
     getKepler_com <- reactive({ 
         amn_name <- input$type_com
         html_file <-  glue('{amn_name} compare')
         return(glue('/{html_file}.html'))
     })
 
- #   style="max-width:100%;width:100%; height: auto",
     
-    # this is where the resource path names are used
-    # dynamic file calling
+    # tab rendering using the resource path names functions for retrieveing resource paths
+    # allows for dynaic map calling
+
+    # dynamic calling for leaflet score maps
     output$map_sco <- renderUI({
         tags$iframe(seamless="seamless", src=paste0('map_sco', getScore_map()),
                     style="position: absolute; top: 0; right: 0; bottom: 0: left: 0;",
@@ -406,7 +400,7 @@ server <- function(input, output){
                     height='100%') # dynamic height (100%) doesn't work so I set it manually
     })
     
-    # select the data table 
+    # data table render output
     #output$summary_table = DT::renderDataTable({
     #    sumstat_df
     #})
@@ -471,7 +465,9 @@ server <- function(input, output){
     #     grid.arrange(score_plot, time_plot, ncol=2)
     # })
     
-    # #clusteirn
+    ## Unsupervised analysis tab
+
+    # # clustering
     # output$plot_cluster<- renderPlot({
     #     df_1<-df.num%>%select(input$var)
     #     df_1<- scale(df_1)
@@ -483,7 +479,7 @@ server <- function(input, output){
         
     # })
     
-    # #bi plot plot
+    # # bi plotlot
     # output$plot_bi<- renderPlot({
     #     df_1<-df.num%>%select(input$var)
     #     res.pca <- prcomp(na.omit(df_1), scale = T)
@@ -503,14 +499,14 @@ server <- function(input, output){
     #     fviz_eig(res.pca, addlabels = TRUE, ylim = c(0, 70))
     # })
     
-    #cor plot
+    # # cor plot
     # output$plot_cor<- renderPlot({
     #     df_1<-df.num%>%select(input$var)
     #     res.pca <- prcomp(na.omit(df_1), scale = T)
     #     var <- get_pca_var(res.pca)
     #     corrplot(var$cos2, is.corr=FALSE)
     # })
-    # contribution plot
+    # # contribution plot
     # output$plot_con<- renderPlot({
     #     df_1<-df.num%>%select(input$var)
     #     res.pca <- prcomp(na.omit(df_1), scale = T)
@@ -531,6 +527,7 @@ server <- function(input, output){
     #                  repel = T     # Avoid text overlapping
     #     ) +xlim(-9,6)+ylim(-2,2)
     # })
+    
     autoInvalidate <- reactiveTimer(10000)
     observe({
         autoInvalidate()
