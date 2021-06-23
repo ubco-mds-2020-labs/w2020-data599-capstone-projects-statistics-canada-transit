@@ -1,12 +1,12 @@
 library(shiny)
 library(glue)
-library(stringr)
+#library(stringr)
 
 # for data table page
-library(DT)
-library(ggpubr)
-library(ggplot2)
-library(dplyr)
+#library(DT)
+#library(gridExtra)
+#library(ggplot2)
+#library(dplyr)
 
 # for unpuervised learning page # all caused problems
 #library(cluster)
@@ -14,10 +14,11 @@ library(dplyr)
 #library(factoextra)
 
 
-
 #  import data
-all_ams <- read.csv("datatable/all_data.csv")[,-c(1,2)]  # ams = accessibility measures
-sumstat_df <- read.csv("datatable/summary_statistics_by_city.csv")[,-1]
+#all_ams <- read.csv("datatable/all_data.csv")[,-c(1,2)]  # ams = accessibility measures
+#sumstat_df <- read.csv("datatable/summary_statistics_by_city.csv")[,-1]
+
+# for pca
 #df_pca <- read.csv("datatable/pca_data.csv")
 #df_pca <- data.frame(column_to_rownames(df_pca, var = "X"))
 #df.num <- df_pca %>% select(where(is.numeric))
@@ -27,7 +28,7 @@ sumstat_df <- read.csv("datatable/summary_statistics_by_city.csv")[,-1]
 
 # Directory path
 scoremap_dir <- "/maps/score_maps"
-kepmap_dir <- "/maps/kepler_maps/general"
+#kepmap_dir <- "/maps/kepler_maps/general"
 isomap_dir <- "/maps/isochrone_maps"
 effmap_dir <- "/maps/efficiency_maps"
 kepmap_dir_time_window <- "/maps/kepler_maps/time_window"
@@ -35,7 +36,7 @@ compare_dir <- "/maps/kepler_maps/compare"
 
 # Add resource paths, with specific resource names
 addResourcePath('map_sco', paste0(getwd(), scoremap_dir))
-addResourcePath('map_kep', paste0(getwd(), kepmap_dir))
+#addResourcePath('map_kep', paste0(getwd(), kepmap_dir))
 addResourcePath('map_iso', paste0(getwd(), isomap_dir)) 
 addResourcePath('map_eff', paste0(getwd(), effmap_dir)) 
 addResourcePath('kep_time', paste0(getwd(), kepmap_dir_time_window))
@@ -43,12 +44,11 @@ addResourcePath('kep_com', paste0(getwd(), compare_dir))
 
 # Factor vector names
 amenity_factor <- c("Library or Archives", "Gallery", "Museum", "Theatre and Concert Hall")
-weight_factor <- c('No', 'Yes')
+weight_factor <- c('no', 'yes')
 nearest_n_factor <- c('1', '2', '3', 'ALL')
-stops <- c('No', 'Yes')
+stops <- c('no', 'yes')
 efficiency_type <- c('Continuous', 'Discrete')
 day_factor <- c('Friday', 'Saturday', 'Sunday')
-
 
 
 ui <- shinyUI(
@@ -122,24 +122,24 @@ ui <- shinyUI(
 
                navbarMenu("Kepler (3D) Accessibility Visualizations",
                           "----",
-                          tabPanel("Score Percentile Measures",
-                                   div(class="outer",
-                                       tags$head(includeCSS("styles/styles.css"), includeScript("styles/gomap.js")),
-                                       htmlOutput('map_kep'),
-                                       absolutePanel(id = "title", class = "panel panel-default",
-                                                     top = 20, left = 65, right = "auto", bottom = "auto",
-                                                     width = "auto", height = "auto",draggable = TRUE,
-                                                     h2('Score Percentile Measure')),
+                        #   tabPanel("Score Percentile Measures",
+                        #            div(class="outer",
+                        #                tags$head(includeCSS("styles/styles.css"), includeScript("styles/gomap.js")),
+                        #                htmlOutput('map_kep'),
+                        #                absolutePanel(id = "title", class = "panel panel-default",
+                        #                              top = 20, left = 65, right = "auto", bottom = "auto",
+                        #                              width = "auto", height = "auto",draggable = TRUE,
+                        #                              h2('Score Percentile Measure')),
                                        
-                                       absolutePanel(id = "controls", class = "panel panel-default",
-                                                     fixed = TRUE, draggable = TRUE,
-                                                     top = 70, left = "auto", right = 20, bottom = "auto",
-                                                     width = 360, height = "auto",
-                                                     h2("Accessibility Explorer"),
-                                                     h5("Score measures are based on the worst case scenario trip time where worst case is to the average time + 2 standard deviations. A higher score corresponds to a lower transit time, although the percentile is taken to render it more interprettable."),
-                                                     br(),
-                                                     selectInput(inputId = "type_kep", label = "Amenity Type", choices = amenity_factor))
-                                   )),
+                        #                absolutePanel(id = "controls", class = "panel panel-default",
+                        #                              fixed = TRUE, draggable = TRUE,
+                        #                              top = 70, left = "auto", right = 20, bottom = "auto",
+                        #                              width = 360, height = "auto",
+                        #                              h2("Accessibility Explorer"),
+                        #                              h5("Score measures are based on the worst case scenario trip time where worst case is to the average time + 2 standard deviations. A higher score corresponds to a lower transit time, although the percentile is taken to render it more interprettable."),
+                        #                              br(),
+                        #                              selectInput(inputId = "type_kep", label = "Amenity Type", choices = amenity_factor))
+                        #            )),
                           tabPanel("Weekday/Weekend Isochrone Comparison",
                                    div(class="outer",
                                        tags$head(includeCSS("styles/styles.css"), includeScript("styles/gomap.js")), # styles
@@ -208,34 +208,34 @@ ui <- shinyUI(
             #         )
             #    ),
 
-               tabPanel("Data Explorer", width = 12,
-                        tags$div(style="margin: 20px; width: 80%"),
-                        fluidRow(column(titlePanel("Welcome to the Data Explorer"), width = 4, offset = 1)),
-                        hr(),
-                        fluidRow(align = "left",
-                            column(6, offset = 1, tags$h4("Click on rows in the data table to view accessibility distributions of that particular Vancouver City Subdivision.")),
-                            column(2, offset = 1, 
-                                   selectInput("weights", "Weights:",
-                                               choices=c("Yes"="yes","No"="no"),
-                                               selected = "Yes"),
-                                   selectInput(inputId="nearest", label="Access to:",
-                                                choices=c("All Amenities" = "avg_time_to_any_amenity",
-                                                          "Nearest Amenity" = "time_to_nearest_amenity"),
-                                               selected = "All Amenities"))
-                        ),
-                        hr(),
-                        fluidRow(align = "center",
-                            column(width = 9, offset = 1,
-                                   tabPanel("summary_statistics",
-                                             DT::dataTableOutput("summary_table"),
-                                             width = '95%'),
-                                   hr(),
-                                   plotOutput("subdivision_violin_plot", click = "plot_click",
-                                   width = '100%', height = '600px')
-                            )
-                        ), 
+            #    tabPanel("Data Explorer", width = 12,
+            #             tags$div(style="margin: 20px; width: 80%"),
+            #             fluidRow(column(titlePanel("Welcome to the Data Explorer"), width = 4, offset = 1)),
+            #             hr(),
+            #             fluidRow(align = "left",
+            #                 column(6, offset = 1, tags$h4("Click on rows in the data table to view accessibility distributions of that particular Vancouver City Subdivision.")),
+            #                 column(2, offset = 1, 
+            #                        selectInput("weights", "Weights:",
+            #                                    choices=c("Yes"="yes","No"="no"),
+            #                                    selected = "Yes"),
+            #                        selectInput(inputId="nearest", label="Access to:",
+            #                                     choices=c("All Amenities" = "avg_time_to_any_amenity",
+            #                                               "Nearest Amenity" = "time_to_nearest_amenity"),
+            #                                    selected = "All Amenities"))
+            #             ),
+            #             hr(),
+            #             fluidRow(align = "center",
+            #                 column(width = 9, offset = 1,
+            #                        tabPanel("summary_statistics",
+            #                                  DT::dataTableOutput("summary_table"),
+            #                                  width = '95%'),
+            #                        hr(),
+            #                        plotOutput("subdivision_violin_plot", click = "plot_click",
+            #                        width = '100%', height = '600px')
+            #                 )
+            #             ), 
                         
-               ),
+            #    ),
 
                
                tabPanel('About this Project',
@@ -321,7 +321,7 @@ server <- function(input, output){
     # get html path
     getScore_map <- reactive({ 
         amn_name <- input$type_sco
-        weight <- str_to_lower(input$weight)
+        weight <- input$weight
         nearest_n <- input$nearest_n
         html_file <- glue("{amn_name} - wt({weight}) - n({nearest_n}) - stops(yes)")
         return(glue('/{html_file}.html'))
@@ -370,11 +370,11 @@ server <- function(input, output){
     })
     
     # dynamic file calling kepler map
-    output$map_kep <- renderUI({
-        tags$iframe(seamless="seamless", src=paste0('map_kep', getKepler_map()),
-                    style="position: absolute; top: 0; right: 0; bottom: 0: left: 0;",
-                    width='100%', height='100%')
-    })
+    # output$map_kep <- renderUI({
+    #     tags$iframe(seamless="seamless", src=paste0('map_kep', getKepler_map()),
+    #                 style="position: absolute; top: 0; right: 0; bottom: 0: left: 0;",
+    #                 width='100%', height='100%')
+    # })
     
     # dynamic file calling isochrone map
     output$map_iso <- renderUI({
@@ -407,69 +407,69 @@ server <- function(input, output){
     })
     
     # select the data table 
-    output$summary_table = DT::renderDataTable({
-        sumstat_df
-    })
+    #output$summary_table = DT::renderDataTable({
+    #    sumstat_df
+    #})
     
     # plot based on the selected row shows that  total dissemination blocks
-    output$subdivision_violin_plot <- renderPlot({
+    # output$subdivision_violin_plot <- renderPlot({
         
-        # user selected row indexing
-        rows_selected = input$summary_table_rows_selected
+    #     # user selected row indexing
+    #     rows_selected = input$summary_table_rows_selected
         
-        # keep subdivisions in selected rows
-        cities_to_keep <- sumstat_df[rows_selected, 1]#$subdiv
-        filtered_ams <- all_ams %>%
-            filter(subdiv %in% cities_to_keep & weight == input$weights)
+    #     # keep subdivisions in selected rows
+    #     cities_to_keep <- sumstat_df[rows_selected, 1]#$subdiv
+    #     filtered_ams <- all_ams %>%
+    #         filter(subdiv %in% cities_to_keep & weight == input$weights)
         
-        # ordered legend 
-        legend_ord_score <- levels(with(filtered_ams,
-                                        reorder(factor(subdiv), -avg_score_to_nearest_amenity, na.rm = TRUE)))
+    #     # ordered legend 
+    #     legend_ord_score <- levels(with(filtered_ams,
+    #                                     reorder(factor(subdiv), -avg_score_to_nearest_amenity, na.rm = TRUE)))
         
-        score_plot <- filtered_ams %>% 
-            ggplot(aes(y = reorder(factor(subdiv), avg_score_to_nearest_amenity, na.rm = TRUE),
-                       x = avg_score_to_nearest_amenity)) +
-            geom_violin(aes(fill = subdiv), scale = 'width', alpha = 0.4, draw_quantiles = c(0.5), size = 0.5) + 
-            scale_fill_discrete(breaks = legend_ord_score) +
-            scale_x_continuous("Average Score to Nearest Amenity",limits = c(0, 0.3), breaks=c(0,0.1,0.2,0.3)) +
-            guides(fill= guide_legend(title = 'Subdivision')) +
-            theme_minimal() +
-            theme(aspect.ratio = 1,
-                  text = element_text(size=20),
-                  panel.grid.major.x = element_line(colour="lightgray", size=0.05),
-                  panel.grid.major.y = element_line(colour="lightgray", size=0.05),
-                  panel.grid.minor.y = element_blank(),
-                  axis.title.y = element_blank(),
-                  axis.text.y = element_blank(),
-                  axis.ticks.y = element_blank()) 
+    #     score_plot <- filtered_ams %>% 
+    #         ggplot(aes(y = reorder(factor(subdiv), avg_score_to_nearest_amenity, na.rm = TRUE),
+    #                    x = avg_score_to_nearest_amenity)) +
+    #         geom_violin(aes(fill = subdiv), scale = 'width', alpha = 0.4, draw_quantiles = c(0.5), size = 0.5) + 
+    #         scale_fill_discrete(breaks = legend_ord_score) +
+    #         scale_x_continuous("Average Score to Nearest Amenity",limits = c(0, 0.3), breaks=c(0,0.1,0.2,0.3)) +
+    #         guides(fill= guide_legend(title = 'Subdivision')) +
+    #         theme_minimal() +
+    #         theme(aspect.ratio = 1,
+    #               text = element_text(size=20),
+    #               panel.grid.major.x = element_line(colour="lightgray", size=0.05),
+    #               panel.grid.major.y = element_line(colour="lightgray", size=0.05),
+    #               panel.grid.minor.y = element_blank(),
+    #               axis.title.y = element_blank(),
+    #               axis.text.y = element_blank(),
+    #               axis.ticks.y = element_blank()) 
         
         
-        # change selected column name so it can be called as object in ggplot
-        sub <- filtered_ams %>% select(subdiv, input$nearest)
-        names(sub)[names(sub) == input$nearest] <- "selected_column"
+    #     # change selected column name so it can be called as object in ggplot
+    #     sub <- filtered_ams %>% select(subdiv, input$nearest)
+    #     names(sub)[names(sub) == input$nearest] <- "selected_column"
         
-        legend_ord_time <- levels(with(sub,
-                                       reorder(factor(subdiv), selected_column, na.rm = TRUE)))
+    #     legend_ord_time <- levels(with(sub,
+    #                                    reorder(factor(subdiv), selected_column, na.rm = TRUE)))
         
-        time_plot <- sub %>%
-            ggplot(aes(y = reorder(factor(subdiv), -selected_column, na.rm = TRUE), 
-                       x = selected_column)) +
-            geom_violin(aes(fill = subdiv), scale = 'width', alpha = 0.4, draw_quantiles = c(0.5), size = 0.5) +
-            scale_fill_discrete(breaks = legend_ord_time) +
-            scale_x_continuous(paste0(input$nearest, " (minutes)")) +
-            guides(fill = guide_legend(title = 'Subdivision')) +
-            theme_minimal() +
-            theme(aspect.ratio = 1,
-                  text = element_text(size=20),
-                  panel.grid.major.x = element_line(colour="lightgray", size=0.05),
-                  panel.grid.major.y = element_line(colour="lightgray", size=0.05),
-                  panel.grid.minor.y = element_blank(),
-                  axis.title.y = element_blank(),
-                  axis.text.y = element_blank(),
-                  axis.ticks.y = element_blank())
+    #     time_plot <- sub %>%
+    #         ggplot(aes(y = reorder(factor(subdiv), -selected_column, na.rm = TRUE), 
+    #                    x = selected_column)) +
+    #         geom_violin(aes(fill = subdiv), scale = 'width', alpha = 0.4, draw_quantiles = c(0.5), size = 0.5) +
+    #         scale_fill_discrete(breaks = legend_ord_time) +
+    #         scale_x_continuous(paste0(input$nearest, " (minutes)")) +
+    #         guides(fill = guide_legend(title = 'Subdivision')) +
+    #         theme_minimal() +
+    #         theme(aspect.ratio = 1,
+    #               text = element_text(size=20),
+    #               panel.grid.major.x = element_line(colour="lightgray", size=0.05),
+    #               panel.grid.major.y = element_line(colour="lightgray", size=0.05),
+    #               panel.grid.minor.y = element_blank(),
+    #               axis.title.y = element_blank(),
+    #               axis.text.y = element_blank(),
+    #               axis.ticks.y = element_blank())
         
-        ggarrange(score_plot, time_plot)
-    })
+    #     grid.arrange(score_plot, time_plot, ncol=2)
+    # })
     
     # #clusteirn
     # output$plot_cluster<- renderPlot({
@@ -531,7 +531,11 @@ server <- function(input, output){
     #                  repel = T     # Avoid text overlapping
     #     ) +xlim(-9,6)+ylim(-2,2)
     # })
-    
+    autoInvalidate <- reactiveTimer(10000)
+    observe({
+        autoInvalidate()
+        cat(".")
+    })
 }
     
 shinyApp(ui, server)

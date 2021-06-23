@@ -182,6 +182,12 @@ plot(density(efficiency_frame$efficiency), main = 'Efficiency Scores')
 ## Export checkpoint
 write.csv(efficiency_frame, '../../../data/3_computed/transit_efficiency/efficiency_frame.csv', row.names = FALSE)
 
+x <- read.csv('../../../data/3_computed/transit_efficiency/efficiency_frame.csv')$efficiency
+
+x_perc <- ecdf(x)
+
+x_perc(0)
+
 ```
 
 
