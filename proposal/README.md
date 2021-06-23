@@ -1,4 +1,4 @@
 # Proposal folder
 
-Contains the report for the proposal.
+Proposal for the capstone project.
 
