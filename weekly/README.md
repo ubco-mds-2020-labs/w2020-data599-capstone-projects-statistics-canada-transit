@@ -1,1 +1,3 @@
-# Folder storing the weekly logs for the group.
+# Weekly folder
+
+Weekly logs and time allocation for each member of the team.
