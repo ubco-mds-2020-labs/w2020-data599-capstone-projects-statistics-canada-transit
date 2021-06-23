@@ -301,8 +301,14 @@ plot_densities <- function(score_frame1, score_frame2, titl1 = 'Plot 1', titl2 =
 # and it will be displayed in R instead of being saved.
 
 # Score map maker:
-# Input: data (dataframe) with columns $score, $DBUID (dissemination block unique ID), $pop (block population), $type (amenity type), $weight (amenity weight), $nearest_n (how many amenities to consider),
-# bus_data (coordinates of bus stops),
+# Input: data (dataframe) with columns:
+    # $score,
+    # $DBUID (dissemination block unique ID),
+    # $pop (block population), 
+    # $type (amenity type),
+    # $weight (amenity weight),
+    # $nearest_n (how many amenities to consider),
+# bus_data (coordinates of bus stops) with columns $stop_name, $stop_id, $latitude, $longitude
 # amenity (which amenity type to consider in the map. Value must exist in the $type column),
 # weight (whether to include weights, Yes/No. Value must exist in the $weight column),
 # nearest_n (how many amenities to consider.Value must exist in the $nearest_n column),
@@ -378,11 +384,13 @@ map_maker_scores <- function(data, bus_data, amenity, weight, nearest_n, add_sto
 
 
 # Isochrone map maker:
-# Input: data (dataframe) with columns $type (amenity types), $weight (amenity weights), $nearest_n (how many amenities to consider),
-# bus_data (coordinates of bus stops),
+# Input: data (dataframe) with columns:
+    # $time_groups (isochrone time group),
+    # $DBUID (dissemination block unique ID),
+    # $pop (block population), 
+    # $type (amenity type),
+# bus_data (coordinates of bus stops) with columns $stop_name, $stop_id, $latitude, $longitude
 # amenity (which amenity type to consider in the map. Value must exist in the $type column),
-# weight (whether to include weights, Yes/No. Value must exist in the $weight column),
-# nearest_n (how many amenities to consider.Value must exist in the $nearest_n column),
 # add_stop = TRUE or FALSE, whether to plot the stop coordinates
 # output directory = where to save the renderd map (only if vew_map == FALSE)
 
@@ -453,7 +461,21 @@ map_maker_isochrone <- function(data, bus_data, amenity, add_stop, output_dir, v
 
 
 
-# Efficiency maps
+# Efficiency map maker with continuous colour scheme:
+# Input: data (dataframe) with columns:
+    # $eff (efficiency score),
+    # $DBUID (dissemination block unique ID),
+    # $pop (block population), 
+    # $type (amenity type),
+    # $mean_score (accessibility score)
+    # $traffic_score (traffic score)
+    # $amn_dens (amenity density)
+# bus_data (coordinates of bus stops) with columns $stop_name, $stop_id, $latitude, $longitude
+# amenity (which amenity type to consider in the map. Value must exist in the $type column),
+# add_stop = TRUE or FALSE, whether to plot the stop coordinates
+# output directory = where to save the renderd map (only if vew_map == FALSE)
+
+# Output: rendered html map (when view == FALSE)
 
 map_maker_efficiency_cont <- function(data, bus_data, add_stop = TRUE, mapTitle = "Continuous Efficiency", output_dir, view_map = FALSE) {
     
@@ -519,6 +541,23 @@ map_maker_efficiency_cont <- function(data, bus_data, add_stop = TRUE, mapTitle 
   }
   
 }
+
+
+# Efficiency map maker with discrete colour scheme:
+# Input: data (dataframe) with columns:
+    # $eff (efficiency score),
+    # $DBUID (dissemination block unique ID),
+    # $pop (block population), 
+    # $type (amenity type),
+    # $mean_score (accessibility score)
+    # $traffic_score (traffic score)
+    # $amn_dens (amenity density)
+# bus_data (coordinates of bus stops) with columns $stop_name, $stop_id, $latitude, $longitude
+# amenity (which amenity type to consider in the map. Value must exist in the $type column),
+# add_stop = TRUE or FALSE, whether to plot the stop coordinates
+# output directory = where to save the renderd map (only if vew_map == FALSE)
+
+# Output: rendered html map (when view == FALSE)
 
 map_maker_efficiency_discrete <- function(data, bus_data, add_stop = TRUE, mapTitle = "Discrete Efficiency", output_dir, view_map = FALSE) {
   
