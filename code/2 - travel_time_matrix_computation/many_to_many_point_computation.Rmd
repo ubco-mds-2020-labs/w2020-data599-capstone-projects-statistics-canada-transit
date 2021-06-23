@@ -151,16 +151,19 @@ of 30 minutes.
 *cell can take a few hours to execute. Please be patient or consider using*
 *less origins or destinations or time points.*
 
-```{r}
+```{r message=FALSE, warning=FALSE, include=TRUE, eval = FALSE}
+
+## MAIN CELL FOR TTM COMPUTATION using CONVEYALS R5
+
 # use a sample to test before running full computation
 #sample <- origins[sample(nrow(origins), 5), ] 
 
 # collect each TTM
 all_ttms <- list()
 
-# dataframe to create a column for types
-amenity_types$id <- as.character(amenity_types$id)
 
+# for loop that computes a TTM for each departure date and hour
+# this is the code that takes roughly 1 hour to run for  15,197*353*36 events
 
 for (day in 14:16) {          # May 14=Fri, 15=Sat, 16=Sun
   for (time in 7:19) {        # 7 to 19 hours
@@ -234,7 +237,7 @@ TTM_agg <- TTM %>%
 ```
 
 
-```{r}
+```{r message=FALSE, warning=FALSE, include=TRUE, eval = FALSE}
 
 # Export the unaggregated files for kepler
 write_csv(for_kepler, paste0(path, "all_days_ttm.csv.gz"))
@@ -304,7 +307,7 @@ summary(TTM_agg)
 - This summarizes our primary method for the first step in efficient
 transit network analysis: **Obtaining Realistic Travel Time Data**
 
-```{r message=FALSE, warning=FALSE, include=TRUE}
+```{r message=FALSE, warning=FALSE, include=TRUE, eval = FALSE}
 
 # for compressed output - otherwise file is too big to be pushed to github
 library('readr')
