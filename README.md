@@ -1,5 +1,7 @@
 ## A High Performing, Scalable Model for Computing and Visualizing Public Transit Accessibility
- 
+
+The primary ***project code***, ***project data***, and ***deployed dashboard code*** can be found in the `code`, `data`, and `dashboard_deployed` directories, respectively. Other documentation and presentation related materials are described in the remaining directories. The executive summary is detailed below, noting that Metropolitan Vancouver and its cultural amenities were used as a proof of concept example on how our project code could be leveraged and applied.
+
 ### A Case Study on Cultural and Art Amenities in Metro Vancouver
 
 ![Vancouver](https://vancouver.ca/images/cov/feature/skytrain-landing.jpg)
@@ -26,3 +28,6 @@ To address the computational intensity of multimodal shortest path routing, we u
 
 This project provides a high performing and scalable framework for producing three unique transit accessibility measures for network analysis using Greater Vancouver as an initial use-case scenario. The frameworks can be further developed and adopted by urban developers to ensure equitable, sustainable, and optimal urban design for years to come.
 
+**Authors:**
+
+*Luka Vukovic, Yuxuan Cui, Rain Shen, Graham Kerford*
