@@ -4,7 +4,7 @@
 
 ![Vancouver](https://vancouver.ca/images/cov/feature/skytrain-landing.jpg)
 
-Dashboard Link:  https://van-transit-access2.herokuapp.com
+**Dashboard Link:**  https://van-transit-access2.herokuapp.com
 
 **Introduction**
 
