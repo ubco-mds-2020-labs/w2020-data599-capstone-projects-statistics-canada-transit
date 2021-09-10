@@ -30,4 +30,4 @@ This project provides a high performing and scalable framework for producing thr
 
 **Authors:**
 
-*Luka Vukovic, Yuxuan Cui, Rain Shen, Graham Kerford*
+*Luka Vukovic, Yuxuan Cui, Raine Shen, Graham Kerford*
